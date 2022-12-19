@@ -225,7 +225,7 @@ _safe_install_npm_package() {
 }
 
 _safe_stow_dotfiles() {
-	local packages="git nvim nvm zsh"
+	local packages="git nvim nvm starship zsh"
 	if is_dry_run
 	then
 		log_notice "Dry run: would have linked dotfiles with stow"
