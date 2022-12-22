@@ -3,6 +3,7 @@ vim.filetype.add({
     svx = "markdown",
     mdx = "markdown",
     svelte = "svelte",
+    astro = "astro",
     patch = "patch",
   },
   filename = {
