@@ -365,6 +365,12 @@ install_developer_tools() {
 install_utilities() {
 	# Install Bitwarden CLI (bw)
 	_install_npm_package_if_needed "@bitwarden/cli" bw
+
+	# Install jq
+	_install_system_package_if_needed jq
+
+	# Install unzip
+	_install_system_package_if_needed unzip
 }
 
 install() {
@@ -384,17 +390,17 @@ install() {
 for arg in "$@"
 do
 	case "$arg" in
-	-h)		help
-			exit
-			;;
+	-h)			help
+				exit
+				;;
 	--help)		help
-			exit
-			;;
+				exit
+				;;
 	--dry-run)	DRY_RUN=1
-			;;
-	*)		log "Unrecognized option: $arg"
-			exit 1
-			;;
+				;;
+	*)			log "Unrecognized option: $arg"
+				exit 1
+				;;
 	esac
 done
 
