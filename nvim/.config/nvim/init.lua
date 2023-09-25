@@ -92,6 +92,10 @@ vim.api.nvim_create_autocmd('BufWritePost', {
 -- [[ Setting options ]]
 -- See `:help vim.o`
 
+-- disable netrw (advised by nvim-tree)
+vim.g.loaded_netrw = 1
+vim.g.loaded_netrwPlugin = 1
+
 -- Enable filetype.lua
 vim.g.do_filetype_lua = 1
 
@@ -144,6 +148,12 @@ vim.keymap.set('n', 'j', "v:count == 0 ? 'gj' : 'j'", { expr = true, silent = tr
 vim.keymap.set('n', '<leader><Tab>', '<Cmd>bn<CR>', { silent = true })
 vim.keymap.set('n', '<leader><S-Tab>', '<Cmd>bp<CR>', { silent = true })
 
+-- Shortcuts for pane navigation
+vim.keymap.set('n', '<M-Up>', '<C-w><Up>', { silent = true })
+vim.keymap.set('n', '<M-Down>', '<C-w><Down>', { silent = true })
+vim.keymap.set('n', '<M-Left>', '<C-w><Left>', { silent = true })
+vim.keymap.set('n', '<M-Right>', '<C-w><Right>', { silent = true })
+
 -- [[ Highlight on yank ]]
 -- See `:help vim.highlight.on_yank()`
 local highlight_group = vim.api.nvim_create_augroup('YankHighlight', { clear = true })
@@ -168,6 +178,12 @@ require('lualine').setup {
 
 -- Enable Comment.nvim
 require('Comment').setup()
+
+-- Enable nvim-tree
+require('nvim-tree').setup()
+
+vim.keymap.set('n', '<leader>tt', require('nvim-tree.api').tree.toggle, { desc = 'File [T]ree: [T]oggle' })
+vim.keymap.set('n', '<leader>tf', require('nvim-tree.api').tree.focus, { desc = 'File [T]ree: [F]ocus' })
 
 -- Enable `lukas-reineke/indent-blankline.nvim`
 -- See `:help indent_blankline.txt`
@@ -226,7 +242,7 @@ vim.keymap.set('n', '<leader>sd', require('telescope.builtin').diagnostics, { de
 -- See `:help nvim-treesitter`
 require('nvim-treesitter.configs').setup {
   -- Add languages to be installed here that you want installed for treesitter
-  ensure_installed = { 'c', 'cpp', 'go', 'lua', 'python', 'rust', 'javascript', 'typescript', 'css', 'svelte', 'astro', 'help' },
+  ensure_installed = { 'c', 'cpp', 'go', 'lua', 'python', 'rust', 'javascript', 'typescript', 'tsx', 'html', 'css', 'svelte', 'astro', 'help' },
 
   highlight = { enable = true },
   indent = { enable = true },
@@ -345,7 +361,7 @@ require('mason').setup()
 
 -- Enable the following language servers
 -- Feel free to add/remove any LSPs that you want here. They will automatically be installed
-local servers = { 'pyright', 'tsserver', 'sumneko_lua', 'svelte', 'html', 'astro' }
+local servers = { 'pyright', 'tsserver', 'lua_ls', 'svelte', 'html', 'astro' }
 
 -- Ensure the servers above are installed
 require('mason-lspconfig').setup {
@@ -373,7 +389,7 @@ local runtime_path = vim.split(package.path, ';')
 table.insert(runtime_path, 'lua/?.lua')
 table.insert(runtime_path, 'lua/?/init.lua')
 
-require('lspconfig').sumneko_lua.setup {
+require('lspconfig').lua_ls.setup {
   on_attach = on_attach,
   capabilities = capabilities,
   settings = {

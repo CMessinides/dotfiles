@@ -142,40 +142,57 @@ _safe_install_starship() {
 	fi
 }
 
-_safe_install_nvm() {
+_safe_install_fnm() {
 	if is_dry_run
 	then
-		log_notice "Dry run: would have installed nvm"
-		log_dim '└ $ curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.2/install.sh | bash'
+		log_notice "Dry run: would have installed fnm"
+		log_dim '└ $ curl -fsSL https://fnm.vercel.app/install | bash -s -- --skip-shell'
 		add_suggested_change
 	else
-		log "Installing nvm..."
-		curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.2/install.sh | bash
-		log_success "Installed nvm"
+		log "Installing fnm..."
+		curl -fsSL https://fnm.vercel.app/install | bash -s -- --skip-shell
+		log_success "Installed fnm"
 	fi
-}
-
-_get_default_node_version() {
-	nvm version default
-}
-
-_has_default_node() {
-	[ _get_default_node_version != "N/A" ]
 }
 
 _safe_install_node() {
 	if is_dry_run
 	then
 		log_notice "Would have installed node"
-		log_dim "└ $ nvm install --lts"
+		log_dim "└ $ fnm install --lts"
 		add_suggested_change
 	else
 		log "Installing node..."
-		nvm install --lts
+		fnm install --lts
 		log_success "Installed node"
 	fi
 }
 
+_safe_install_deno() {
+	if is_dry_run
+	then
+		log_notice "Dry run: would have installed Deno"
+		log_dim '└ $ curl -fsSL https://deno.land/x/install/install.sh | sh'
+		add_suggested_change
+	else
+		log "Installing Deno..."
+		curl -fsSL https://deno.land/x/install/install.sh | sh
+		log_success "Installed Deno"
+	fi
+}
+
+_safe_install_rust() {
+	if is_dry_run
+	then
+		log_notice "Dry run: would have installed Rust"
+		log_dim '└ $ curl --proto "=https" --tlsv1.2 -sSf https://sh.rustup.rs | sh'
+		add_suggested_change
+	else
+		log "Installing Rust..."
+		curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+		log_success "Installed Rust"
+	fi
+}
 
 _safe_install_neovim() {
 	if is_dry_run
@@ -225,7 +242,7 @@ _safe_install_npm_package() {
 }
 
 _safe_stow_dotfiles() {
-	local packages="git nvim nvm starship zsh"
+	local packages="git nvim fnm starship tmux tmuxp zsh"
 	if is_dry_run
 	then
 		log_notice "Dry run: would have linked dotfiles with stow"
@@ -329,22 +346,35 @@ install_dotfiles() {
 }
 
 install_developer_tools() {
-	# Install Node Version Manager (nvm)
-	local nvm_dir="$HOME/.nvm"
-	if [ -d "$nvm_dir" ]
+	# Install Fast Node Manager (fnm)
+	if has fnm
 	then
-		log_dim "nvm is already installed"
+		log_dim "fnm is already installed"
 	else
-		_safe_install_nvm
+		_safe_install_fnm
 	fi
 
-	# Install node
-	eval_unsafe . "$nvm_dir/nvm.sh"
-	if has node
+	if [ "$(fnm current)" != "none" ]
 	then
 		log_dim "node is already installed"
 	else
 		_safe_install_node
+	fi
+
+	# Install Deno
+	if has deno
+	then
+		log_dim "Deno is already installed"
+	else
+		_safe_install_deno
+	fi
+
+	# Install Rust
+	if has rustc
+	then
+		log_dim "Rust is already installed"
+	else
+		_safe_install_rust
 	fi
 
 	# Install neovim
@@ -360,12 +390,12 @@ install_developer_tools() {
 
 	# Install build-essential (various neovim dependencies)
 	_install_system_package_if_needed build-essential "make gcc"
+
+	# Install tmuxp (tmux workspace manager)
+	_install_system_package_if_needed tmuxp
 }
 
 install_utilities() {
-	# Install Bitwarden CLI (bw)
-	_install_npm_package_if_needed "@bitwarden/cli" bw
-
 	# Install jq
 	_install_system_package_if_needed jq
 
@@ -376,8 +406,8 @@ install_utilities() {
 install() {
 	install_shell
 	install_dotfiles
-	install_developer_tools
 	install_utilities
+	install_developer_tools
 
 	if has_suggested_changes
 	then

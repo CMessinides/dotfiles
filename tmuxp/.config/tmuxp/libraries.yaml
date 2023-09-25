@@ -1,0 +1,14 @@
+session_name: libraries
+start_directory: ~/source
+windows:
+  - window_name: gravelcss
+    start_directory: gravelcss
+    options:
+      main-pane-height: 35
+    layout: main-horizontal
+    focus: true
+    panes:
+      - shell_command: nvim
+        focus: true
+      - pane
+      - pane
