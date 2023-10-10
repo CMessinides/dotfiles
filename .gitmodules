@@ -1,0 +1,3 @@
+[submodule "copy/nvim/.config/nvim"]
+	path = copy/nvim/.config/nvim
+	url = git@github.com:CMessinides/nvim.git
