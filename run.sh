@@ -36,6 +36,14 @@ has() {
 	command -v "$1" 1>/dev/null 2>&1
 }
 
+dir_exists() {
+    [ -d "$1" ]
+}
+
+file_exists() {
+    [ -f "$1" ]
+}
+
 COLOR_NORMAL=$(tput sgr0)
 COLOR_DIM=$(tput dim)
 COLOR_GREEN=$(tput setaf 2)
@@ -57,6 +65,18 @@ log_dim() {
 	log "${COLOR_DIM}$@${COLOR_NORMAL}"
 }
 
+sync-dotfiles() {
+    if ! has stow; then
+        log_notice "stow is required"
+        log_notice "run '${BASH_SOURCE[0]} install' first"
+        exit 1
+    fi
+
+    local stow_packages="$(basename -a $COPY_DIR/*)"
+    stow -v -t "$HOME" -d "$COPY_DIR" -S $stow_packages
+    log_success "Dotfiles linked"
+}
+
 install() {
     if has brew; then
         log_dim "Homebrew is already installed"
@@ -76,16 +96,23 @@ install() {
         log_success "zsh set as default shell"
     fi
 
-    if [ -d "$HOME/.oh-my-zsh/" ]; then
+    if dir_exists "$HOME/.oh-my-zsh/"; then
         log_dim "oh-my-zsh is already installed"
     else
         git clone https://github.com/ohmyzsh/ohmyzsh.git "$HOME/.oh-my-zsh"
         log_success "oh-my-zsh installed"
     fi
 
-    local stow_packages="$(basename -a $COPY_DIR/*)"
-    stow -t "$HOME" -d "$COPY_DIR" -S $stow_packages
-    log_success "Dotfiles linked"
+    local doom_path="$HOME/.emacs.d/bin/doom"
+    if file_exists "$doom_path"; then
+        log_dim "doom emacs is already installed"
+    else
+        git clone https://github.com/hlissner/doom-emacs "$HOME/.emacs.d"
+        $doom_path install
+        log_success "doom emacs installed"
+    fi
+
+    sync-dotfiles
 }
 
 $@

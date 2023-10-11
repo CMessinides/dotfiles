@@ -17,6 +17,9 @@ brew "rustup"
 brew "neovim"
 brew "ripgrep"
 brew "tmuxp"
+brew "emacs"
+brew "fd"
+brew "coreutils"
 
 # Utilities
 brew "jq"
