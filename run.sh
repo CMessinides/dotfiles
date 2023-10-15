@@ -44,25 +44,45 @@ file_exists() {
     [ -f "$1" ]
 }
 
-COLOR_NORMAL=$(tput sgr0)
-COLOR_DIM=$(tput dim)
-COLOR_GREEN=$(tput setaf 2)
-COLOR_YELLOW=$(tput setaf 3)
+has_termcap() (
+    tput $@ 1>/dev/null 2>&1
+)
+
+COLOR_NORMAL=""
+COLOR_DIM=""
+COLOR_GREEN=""
+COLOR_YELLOW=""
+
+if has_termcap sgr0; then
+    COLOR_NORMAL="$(tput sgr0)"
+fi
+
+if has_termcap dim; then
+    COLOR_DIM="$(tput dim)"
+fi
+
+if has_termcap setaf 2; then
+    COLOR_GREEN="$(tput setaf 2)"
+fi
+
+if has_termcap setaf 3; then
+    COLOR_YELLOW="$(tput setaf 3)"
+fi
 
 log() {
 	echo "$@" 1>&2
 }
 
 log_success() {
-	log "${COLOR_GREEN}$@${COLOR_NORMAL}"
+	log "${COLOR_GREEN}$*${COLOR_NORMAL}"
 }
 
 log_notice() {
-	log "${COLOR_YELLOW}$@${COLOR_NORMAL}"
+	log "${COLOR_YELLOW}$*${COLOR_NORMAL}"
 }
 
 log_dim() {
-	log "${COLOR_DIM}$@${COLOR_NORMAL}"
+	log "${COLOR_DIM}$*${COLOR_NORMAL}"
 }
 
 sync-dotfiles() {
