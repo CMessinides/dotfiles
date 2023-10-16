@@ -4,7 +4,6 @@ tap "homebrew/cask"
 brew "gcc"
 
 # Shell
-brew "zsh"
 brew "starship"
 
 # Dotfile management

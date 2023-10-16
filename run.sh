@@ -20,7 +20,6 @@ absdirname() ( cd "$(dirname "$1")" && pwd )
 #region Global constants
 
 SRC_ROOT="$(absdirname "${BASH_SOURCE[0]}")"
-LIB_DIR="$SRC_ROOT/lib"
 COPY_DIR="$SRC_ROOT/copy"
 
 #endregion
@@ -45,7 +44,7 @@ file_exists() {
 }
 
 has_termcap() (
-    tput $@ 1>/dev/null 2>&1
+    tput "$@" 1>/dev/null 2>&1
 )
 
 COLOR_NORMAL=""
@@ -85,14 +84,44 @@ log_dim() {
 	log "${COLOR_DIM}$*${COLOR_NORMAL}"
 }
 
+install-zsh() {
+    local zsh_path;
+
+    if has zsh; then
+        log_dim "zsh is already installed"
+    else
+        brew install zsh
+    fi
+
+    zsh_path="$(command -v zsh)"
+    if [ "$zsh_path" = "$SHELL" ]; then
+        log_dim "zsh is already the default shell"
+    else
+        chsh -s "$zsh_path"
+        log_success "zsh set as default shell"
+    fi
+}
+
+install-doom-emacs() {
+    local doom_path="$HOME/.emacs.d/bin/doom"
+    if file_exists "$doom_path"; then
+        log_dim "doom emacs is already installed"
+    else
+        git clone https://github.com/hlissner/doom-emacs "$HOME/.emacs.d"
+        $doom_path install
+        log_success "doom emacs installed"
+    fi
+}
+
 sync-dotfiles() {
+    local stow_packages;
     if ! has stow; then
         log_notice "stow is required"
         log_notice "run '${BASH_SOURCE[0]} install' first"
         exit 1
     fi
 
-    local stow_packages="$(basename -a $COPY_DIR/*)"
+    stow_packages="$(basename -a "$COPY_DIR"/*)"
     stow -v -t "$HOME" -d "$COPY_DIR" -S $stow_packages
     log_success "Dotfiles linked"
 }
@@ -108,13 +137,7 @@ install() {
     brew bundle install --no-lock --file "$SRC_ROOT/brew/.Brewfile"
     log_success "Homebrew packages installed"
 
-    local zsh_path="$(command -v zsh)"
-    if [ "$zsh_path" = "$SHELL" ]; then
-        log_dim "zsh is already the default shell"
-    else
-        chsh -s "$zsh_path"
-        log_success "zsh set as default shell"
-    fi
+    install-zsh
 
     if dir_exists "$HOME/.oh-my-zsh/"; then
         log_dim "oh-my-zsh is already installed"
@@ -123,14 +146,7 @@ install() {
         log_success "oh-my-zsh installed"
     fi
 
-    local doom_path="$HOME/.emacs.d/bin/doom"
-    if file_exists "$doom_path"; then
-        log_dim "doom emacs is already installed"
-    else
-        git clone https://github.com/hlissner/doom-emacs "$HOME/.emacs.d"
-        $doom_path install
-        log_success "doom emacs installed"
-    fi
+    install-doom-emacs
 
     sync-dotfiles
 }
