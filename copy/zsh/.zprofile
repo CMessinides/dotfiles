@@ -1,2 +1,13 @@
+BREW_EXECUTABLES=(
+    "/home/linuxbrew/.linuxbrew/bin/brew"
+    "/opt/homebrew/bin/brew"
+    "/usr/local/bin/brew"
+)
 
-eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+for candidate in "${BREW_EXECUTABLES[@]}"
+do
+    if [ -x "$candidate" ] && [ -f "$candidate" ]; then
+        eval "$("$candidate" shellenv)"
+        break
+    fi
+done
