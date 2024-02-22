@@ -110,7 +110,9 @@ esac
 # pnpm end
 
 # tmuxp
-export DISABLE_AUTO_TITLE='true'
 # tmuxp end
 
 # zprof
+
+eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+export DISABLE_AUTO_TITLE='true'
