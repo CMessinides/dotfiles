@@ -1,0 +1,28 @@
+session_name: teddyandcam
+start_directory: ~/source/teddyandcam.com
+windows:
+  - window_name: web
+    start_directory: apps/web
+    options:
+      main-pane-height: 67%
+    layout: main-horizontal
+    focus: true
+    panes:
+      - shell_command: nvim
+        focus: true
+      - shell_command: pnpm run test
+      - pane
+  - window_name: api
+    start_directory: apps/api
+    options:
+      main-pane-height: 67%
+    layout: main-horizontal
+    panes:
+      - shell_command: nvim
+        focus: true
+      - shell_command: pnpm run test
+      - pane
+  - window_name: dev_server
+    panes:
+      - shell_command: pnpm exec turbo dev
+        focus: true
