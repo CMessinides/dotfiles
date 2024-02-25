@@ -18,6 +18,7 @@ brew "ripgrep"
 brew "tmuxp"
 brew "emacs"
 brew "fd"
+brew "fzf"
 brew "coreutils"
 
 # Utilities

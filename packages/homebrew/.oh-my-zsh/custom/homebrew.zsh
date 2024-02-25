@@ -11,3 +11,5 @@ do
         break
     fi
 done
+
+unset BREW_EXECUTABLES
