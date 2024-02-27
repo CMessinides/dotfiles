@@ -1,4 +1,4 @@
-export DOTFILES="$HOME/dotfiles"
+export DOTFILES="$HOME/source/dotfiles"
 
 # [g]o [t]o [d]ot[f]iles
 gtdf() { cd "$DOTFILES" }
