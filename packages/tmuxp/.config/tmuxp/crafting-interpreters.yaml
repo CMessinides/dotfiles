@@ -1,0 +1,29 @@
+session_name: crafting-interpreters
+start_directory: ~/source/crafting-interpreters
+windows:
+  - window_name: tlox
+    start_directory: tlox
+    options:
+      main-pane-height: 67%
+    layout: main-horizontal
+    focus: true
+    panes:
+      - shell_command: nvim
+        focus: true
+      - pane
+      - pane
+  - window_name: clox
+    start_directory: clox
+    options:
+      main-pane-height: 67%
+    layout: main-horizontal
+    panes:
+      - shell_command: nvim
+        focus: true
+      - pane
+      - pane
+  - window_name: notes
+    start_directory: ~/org
+    panes:
+      - shell_command: nvim crafting-interpreters.org
+        focus: true
