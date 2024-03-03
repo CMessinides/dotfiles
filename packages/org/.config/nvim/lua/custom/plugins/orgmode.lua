@@ -4,6 +4,10 @@ return {
         dependencies = {
             { 'nvim-treesitter/nvim-treesitter', lazy = true },
         },
+        cmd = {
+            'OrgCapture'
+        },
+        ft = 'org',
         event = 'VeryLazy',
         config = function()
             -- Load treesitter grammar for org
@@ -20,9 +24,13 @@ return {
 
             -- Setup orgmode
             require('orgmode').setup({
-                org_agenda_files = { '~/notes/**/*', '~/private/**/*' },
-                org_default_notes_file = '~/notes/refile.org',
+                org_agenda_files = { '~/org/**/*', '~/private/**/*' },
+                org_default_notes_file = '~/org/refile.org',
             })
+
+            vim.api.nvim_create_user_command('OrgCapture', function()
+                require('orgmode').capture:prompt()
+            end, { desc = "Open org capture prompt" })
         end,
     }
 }
