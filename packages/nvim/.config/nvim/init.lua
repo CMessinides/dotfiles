@@ -495,28 +495,35 @@ require('mason-lspconfig').setup()
 -- Enable the following language servers
 --  Feel free to add/remove any LSPs that you want here. They will automatically be installed.
 --
---  Add any additional override configuration in the following tables. They will be passed to
---  the `settings` field of the server config. You must look up that documentation yourself.
---
 --  If you want to override the default filetypes that your language server will attach to you can
 --  define the property 'filetypes' to the map in question.
 local servers = {
   -- clangd = {},
   gopls = {
-    gopls = {
-      gofumpt = true,
-      staticcheck = true,
+    settings = {
+      gopls = {
+        gofumpt = true,
+        staticcheck = true,
+      },
     },
   },
   -- pyright = {},
   -- rust_analyzer = {},
-  tsserver = {},
+  tsserver = {
+    root_dir = require('lspconfig').util.root_pattern("package.json"),
+    single_file_support = false,
+  },
+  denols = {
+    root_dir = require('lspconfig').util.root_pattern("deno.json", "deno.jsonc"),
+  },
   -- html = { filetypes = { 'html', 'twig', 'hbs'} },
 
   lua_ls = {
-    Lua = {
-      workspace = { checkThirdParty = false },
-      telemetry = { enable = false },
+    settings = {
+      Lua = {
+        workspace = { checkThirdParty = false },
+        telemetry = { enable = false },
+      },
     },
   },
 }
@@ -540,8 +547,10 @@ mason_lspconfig.setup_handlers {
     require('lspconfig')[server_name].setup {
       capabilities = capabilities,
       on_attach = on_attach,
-      settings = servers[server_name],
+      settings = (servers[server_name] or {}).settings,
       filetypes = (servers[server_name] or {}).filetypes,
+      root_dir = (servers[server_name] or {}).root_dir,
+      single_file_support = (servers[server_name] or {}).single_file_support,
     }
   end,
 }
