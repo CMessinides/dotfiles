@@ -228,7 +228,9 @@ require('lazy').setup({
   --
   --    For additional information see: https://github.com/folke/lazy.nvim#-structuring-your-plugins
   { import = 'custom.plugins' }
-}, {})
+}, {
+  lockfile = vim.fn.stdpath("config") .. "/" .. (vim.env.NVIM_LAZY_LOCKFILE or "lazy-lock.json")
+})
 
 -- Set options
 require('cmessinides.opts')
