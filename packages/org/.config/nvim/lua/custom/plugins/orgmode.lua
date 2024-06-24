@@ -114,6 +114,20 @@ return {
             require('orgmode').setup({
                 org_agenda_files = { '~/org/**/*', '~/private/**/*' },
                 org_default_notes_file = '~/org/refile.org',
+                org_capture_templates = {
+                    t = {
+                        description = 'Task',
+                        template = '* TODO %?\n  %u',
+                    },
+                    m = {
+                        description = 'Meeting',
+                        template = '\n**** %?\n     %^U',
+                        datetree = {
+                            tree_type = 'day',
+                        },
+                        target = '~/org/calendar.org',
+                    },
+                },
             })
 
             vim.api.nvim_create_user_command('OrgCapture', function()
