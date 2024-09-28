@@ -134,19 +134,25 @@ return {
                 require('orgmode').capture:prompt()
             end, { desc = "Open org capture prompt" })
 
-            require('which-key').register {
-                ['<leader>o'] = { name = '[O]rg', _ = 'which_key_ignore' },
-            }
+            require('which-key').add({
+                { "<leader>o",  group = "[O]rg" },
+                { "<leader>o_", hidden = true },
+            })
 
             vim.api.nvim_create_autocmd('Filetype', {
                 pattern = 'org',
                 callback = function(event)
-                    require('which-key').register({
-                        ['<leader>ob'] = { name = '[O]rg [B]abel', _ = 'which_key_ignore' },
-                        ['<leader>od'] = { name = '[O]rg [D]ate', _ = 'which_key_ignore' },
-                        ['<leader>oi'] = { name = '[O]rg [I]nsert', _ = 'which_key_ignore' },
-                        ['<leader>ol'] = { name = '[O]rg [L]ink', _ = 'which_key_ignore' },
-                        ['<leader>ox'] = { name = '[O]rg Timesheet', _ = 'which_key_ignore' },
+                    require('which-key').add({
+                        { '<leader>ob',  group = '[O]rg [B]abel' },
+                        { '<leader>ob_', hidden = true },
+                        { '<leader>od',  group = '[O]rg [D]ate' },
+                        { '<leader>od_', hidden = true },
+                        { '<leader>oi',  group = '[O]rg [I]nsert' },
+                        { '<leader>oi_', hidden = true },
+                        { '<leader>ol',  group = '[O]rg [L]ink' },
+                        { '<leader>ol_', hidden = true },
+                        { '<leader>ox',  group = '[O]rg Timesheet' },
+                        { '<leader>ox_', hidden = true },
                     }, {
                         buffer = event.buf
                     })
