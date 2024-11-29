@@ -488,6 +488,10 @@ local servers = {
       },
     },
   },
+
+  emmet_language_server = {
+    filetypes = { "css", "html", "javascript", "javascriptreact", "less", "sass", "scss", "pug", "twig", "typescriptreact" },
+  }
 }
 
 -- Setup neovim lua configuration
