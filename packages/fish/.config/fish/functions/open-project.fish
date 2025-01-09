@@ -10,9 +10,9 @@ function open-project -d 'Open a project in tmux'
 
     if [ -n "$project" ]
         # Test for existing session
-        tmux has-session -t "$project" 2>/dev/null
+        tmux has-session -t "$project" &>/dev/null
 
-        if [ $last_pid != 0 ]
+        if [ $status != 0 ]
             tmux new-session -d -c "$project_root/$project" -s "$project"
         end
 
