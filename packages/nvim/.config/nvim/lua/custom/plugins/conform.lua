@@ -8,7 +8,7 @@ return {
                 -- Customize or remove this keymap to your liking
                 "<leader>f",
                 function()
-                    require("conform").format({ async = true, lsp_fallback = true })
+                    require("conform").format({ async = true })
                 end,
                 mode = "",
                 desc = "Format buffer",
@@ -20,13 +20,18 @@ return {
             formatters_by_ft = {
                 lua = { "stylua" },
                 python = { "isort", "black" },
-                javascript = { { "prettierd", "prettier" } },
-                typescript = { { "prettierd", "prettier" } },
-                css = { { "prettierd", "prettier" } },
-                twig = { { "prettierd", "prettier" } },
+                javascript = { "prettierd", "prettier", stop_after_first = true },
+                javascriptreact = { "prettierd", "prettier", stop_after_first = true },
+                typescript = { "prettierd", "prettier", stop_after_first = true },
+                typescriptreact = { "prettierd", "prettier", stop_after_first = true },
+                css = { "prettierd", "prettier", stop_after_first = true },
+                twig = { "prettierd", "prettier", stop_after_first = true },
+            },
+            default_format_opts = {
+                lsp_format = "fallback",
             },
             -- Set up format-on-save
-            format_on_save = { timeout_ms = 500, lsp_fallback = true },
+            format_on_save = { timeout_ms = 500 },
             -- Customize formatters
             formatters = {
                 shfmt = {
