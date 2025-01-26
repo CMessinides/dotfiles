@@ -17,6 +17,11 @@
                  :jump-to-captured t
                  :empty-lines 1))
   (add-to-list 'org-capture-templates
+               '("j" "Journal"
+                 entry (file+datetree "~/private/journal.org")
+                 "* %u %?"
+                 :empty-lines 1))
+  (add-to-list 'org-capture-templates
                '("c" "Call"
                  entry (file+headline +org-capture-todo-file "Calls")
                  "* %U Call with %?"
