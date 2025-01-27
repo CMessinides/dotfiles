@@ -13,4 +13,8 @@ if status is-interactive
 
     # <Ctrl-F> to open a project launcher
     bind \cf 'open-project; commandline -f repaint'
+
+    # Abbreviations
+    abbr -a google search --engine=google
+    abbr -a mdn search --engine=mdn
 end
