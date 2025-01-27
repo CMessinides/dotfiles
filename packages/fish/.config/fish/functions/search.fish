@@ -7,6 +7,7 @@ function search
 
     if set -ql _flag_help
         echo "search [-h|--help] [-e|--engine=($(string join "|" $engines))] [SEARCH_TERM ...]"
+        return 0
     end
 
     if test -z $_flag_engine
