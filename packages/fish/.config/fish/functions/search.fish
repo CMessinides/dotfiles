@@ -14,8 +14,7 @@ function search
         set -f _flag_engine $default_engine
     end
 
-    set -l escaped_terms ""
-    set -l query "$(string escape --style=url $argv | string replace -a ' ' '+')"
+    set -l query "$(string escape --style=url $argv | string join '+')"
 
     switch $_flag_engine
         case google
