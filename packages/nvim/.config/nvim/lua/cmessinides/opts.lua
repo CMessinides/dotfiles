@@ -49,3 +49,6 @@ vim.o.termguicolors = true
 -- Open splits down and to the right
 vim.o.splitbelow = true
 vim.o.splitright = true
+
+-- Execute trusted project-local config files
+vim.o.exrc = true
