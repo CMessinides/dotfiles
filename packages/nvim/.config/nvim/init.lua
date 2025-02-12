@@ -90,10 +90,13 @@ require('lazy').setup({
       -- Useful status updates for LSP
       -- NOTE: `opts = {}` is the same as calling `require('fidget').setup({})`
       { 'j-hui/fidget.nvim', tag = 'legacy', opts = {} },
-
-      -- Additional lua configuration, makes nvim stuff amazing!
-      'folke/neodev.nvim',
     },
+  },
+
+  {
+    'folke/lazydev.nvim',
+    ft = 'lua',
+    opts = {}
   },
 
   {
@@ -520,9 +523,6 @@ local servers = {
   }
 }
 
--- Setup neovim lua configuration
-require('neodev').setup()
-
 -- nvim-cmp supports additional completion capabilities, so broadcast that to servers
 local capabilities = vim.lsp.protocol.make_client_capabilities()
 capabilities = require('cmp_nvim_lsp').default_capabilities(capabilities)
@@ -552,7 +552,7 @@ mason_lspconfig.setup_handlers {
 local cmp = require 'cmp'
 local luasnip = require 'luasnip'
 require('luasnip.loaders.from_vscode').lazy_load()
-require('luasnip.loaders.from_lua').lazy_load({ paths = '~/.config/nvim/luasnippets' })
+require('luasnip.loaders.from_lua').lazy_load({ paths = { '~/.config/nvim/luasnippets' } })
 luasnip.config.setup {}
 
 cmp.setup {
@@ -608,6 +608,7 @@ cmp.setup {
     end, { 'i', 's' }),
   },
   sources = {
+    { name = 'lazydev', group_index = 0 },
     { name = 'nvim_lsp' },
     { name = 'luasnip' },
   },
