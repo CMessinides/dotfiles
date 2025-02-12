@@ -119,6 +119,13 @@ require('lazy').setup({
     config = true
   },
 
+  -- Surround actions
+  {
+    'echasnovski/mini.surround',
+    event = "VeryLazy",
+    opts = {}
+  },
+
   -- Useful plugin to show you pending keybinds.
   { 'folke/which-key.nvim',  opts = {} },
   {
