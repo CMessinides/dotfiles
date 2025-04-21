@@ -263,24 +263,8 @@ require("cmessinides.opts")
 -- Set the colorscheme
 vim.cmd.colorscheme("tokyonight")
 
--- [[ Basic Keymaps ]]
-
--- Keymaps for better default experience
--- See `:help vim.keymap.set()`
-vim.keymap.set({ "n", "v" }, "<Space>", "<Nop>", { silent = true })
-
--- Keep cursor in the middle of the screen when jumping by half-pages
-vim.keymap.set("n", "<C-d>", "<C-d>zz")
-vim.keymap.set("n", "<C-u>", "<C-u>zz")
-
--- Put the highlighted search term in the middle of the screen
--- when jumping between terms.
-vim.keymap.set("n", "n", "nzzzv")
-vim.keymap.set("n", "N", "Nzzzv")
-
--- Remap for dealing with word wrap
-vim.keymap.set("n", "k", "v:count == 0 ? 'gk' : 'k'", { expr = true, silent = true })
-vim.keymap.set("n", "j", "v:count == 0 ? 'gj' : 'j'", { expr = true, silent = true })
+-- Custom keymaps
+require("cmessinides.keymaps")
 
 -- [[ Highlight on yank ]]
 -- See `:help vim.highlight.on_yank()`
@@ -492,6 +476,10 @@ wk.add({
     { "<leader>r_", hidden = true },
     { "<leader>s", group = "[S]earch" },
     { "<leader>s_", hidden = true },
+    { "<leader>t", group = "[T]ab" },
+    { "<leader>t_", hidden = true },
+    { "<leader>u", group = "[U]I" },
+    { "<leader>u_", hidden = true },
     { "<leader>w", group = "[W]orkspace" },
     { "<leader>w_", hidden = true },
 })

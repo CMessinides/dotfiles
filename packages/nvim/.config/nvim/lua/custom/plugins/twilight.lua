@@ -4,10 +4,10 @@ return {
         cmd = {
             "Twilight",
             "TwilightEnable",
-            "TwilightDisable"
+            "TwilightDisable",
         },
         keys = {
-            { "<leader>tt", "<cmd>Twilight<cr>", desc = "Toggle Twilight" }
+            { "<leader>ut", "<cmd>Twilight<cr>", desc = "Toggle Twilight" },
         },
         opts = {
             context = 5,
@@ -21,6 +21,6 @@ return {
                 "headline",
                 "list",
             },
-        }
-    }
+        },
+    },
 }
