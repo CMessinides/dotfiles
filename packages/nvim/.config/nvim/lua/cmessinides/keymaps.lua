@@ -21,3 +21,7 @@ vim.keymap.set("n", "j", "v:count == 0 ? 'gj' : 'j'", { expr = true, silent = tr
 vim.keymap.set("n", "<Leader>tc", vim.cmd.tabnew, { desc = "[C]reate [T]ab" })
 vim.keymap.set("n", "<Leader>tn", vim.cmd.tabnext, { desc = "[N]ext [T]ab" })
 vim.keymap.set("n", "<Leader>tp", vim.cmd.tabprev, { desc = "[P]rev [T]ab" })
+
+-- Add keymaps for buffer commands
+vim.keymap.set("n", "<Leader>bd", vim.cmd.bd, { desc = "[B]uffer [D]elete" })
+vim.keymap.set("n", "<Leader>bda", "<Cmd>%bd<CR>", { desc = "[B]uffer [D]elete [A]ll" })
