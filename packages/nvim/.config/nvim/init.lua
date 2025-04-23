@@ -191,7 +191,7 @@ require("lazy").setup({
         opts = {
             options = {
                 icons_enabled = true,
-                theme = "tokyonight",
+                theme = "auto",
                 component_separators = "|",
                 section_separators = "",
             },
@@ -464,6 +464,8 @@ end
 local wk = require("which-key")
 
 wk.add({
+    { "<leader>b", group = "[B]uffer" },
+    { "<leader>b_", hidden = true },
     { "<leader>c", group = "[C]ode" },
     { "<leader>c_", hidden = true },
     { "<leader>d", group = "[D]ocument" },
