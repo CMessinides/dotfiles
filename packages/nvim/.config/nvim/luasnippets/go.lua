@@ -5,7 +5,6 @@ return {
         {
             trig = "ierr",
             dscr = "Implement the error interface for a type",
-            snippetType = "autosnippet",
             condition = line_begin,
         },
         fmta(
@@ -25,7 +24,6 @@ return {
         {
             trig = "cerr",
             dscr = "Implement a custom error type",
-            snippetType = "autosnippet",
             condition = line_begin,
         },
         fmta(
@@ -36,7 +34,7 @@ return {
                 }
 
                 func (e *<>) Error() string {
-                    return "error message: " + e.Err.Error()
+                    return "<>: " + e.Err.Error()
                 }
 
                 func (e *<>) Unwrap() error {
@@ -47,6 +45,7 @@ return {
                 i(1, "CustomError"),
                 i(2),
                 rep(1),
+                i(3),
                 rep(1),
             }
         )
