@@ -4,17 +4,28 @@ function add-worktree
     end
 
     if test "$git_dir" = ".git"
-        set -f project "$(pwd | xargs basename)"
+        set -f project "$(basename (pwd))"
     else
-        set -f project "$(dirname $repo_root | xargs basename)"
+        set -f project "$(basename (dirname "$git_dir"))"
     end
 
-    set -l branch "$argv[1]"
+    set -f branch "$argv[1]"
 
     if test -z "$branch"
-        if not set branch "$(string trim (git branch -a | grep -v '^[*+]') | fzf)"
-            return 1
+        set -l opts "$(echo '(Create new branch)'; string trim (git branch -a | grep -v '^[*+]'))"
+        set -f branch "$(echo $opts | fzf)"
+
+        if test "$branch" = '(Create new branch)'
+            read -f branch --prompt-str='Branch name: '
+                or return 1
+            if test -n "$branch"
+                git branch -c "$branch"
+            end
         end
+    end
+
+    if test -z "$branch"
+        return 1
     end
 
     set -l worktree_path "$WORKTREE_ROOT/$project/$branch"
@@ -22,5 +33,5 @@ function add-worktree
         return 1
     end
 
-    echo "$worktree_path"
+    echo "$branch"
 end
