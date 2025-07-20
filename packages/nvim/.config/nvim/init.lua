@@ -538,6 +538,7 @@ local servers = {
             "pug",
             "twig",
             "typescriptreact",
+            "svelte",
         },
     },
 }
