@@ -1,10 +1,12 @@
 #! /usr/bin/env python3
 import argparse
 from enum import Enum
+from functools import total_ordering
 import os
 from pathlib import Path
 import subprocess
 import sys
+from typing import Any
 
 
 PACKAGE_ROOT = Path("./packages")
@@ -99,6 +101,7 @@ class PackageState:
         return f"<PackageState status={self.status()}>"
 
 
+@total_ordering
 class Package:
     def __init__(self, name: str) -> None:
         self.name = name
@@ -122,6 +125,16 @@ class Package:
 
         return all_files
 
+    def __lt__(self, other: Any) -> bool:
+        if not isinstance(other, Package):
+            raise NotImplemented
+        return self.name < other.name
+
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, Package):
+            raise NotImplemented
+        return self.name == other.name
+
     def __str__(self) -> str:
         return f'package "{self.name}"'
 
@@ -130,7 +143,7 @@ class Package:
 
 
 def get_all_packages() -> list[Package]:
-    return [Package(name) for name in os.listdir(PACKAGE_ROOT)]
+    return sorted(Package(name) for name in os.listdir(PACKAGE_ROOT))
 
 
 STOW_ARGS = ["-d", str(PACKAGE_ROOT), "-t", str(HOME)]
