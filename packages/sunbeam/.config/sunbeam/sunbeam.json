@@ -1,0 +1,7 @@
+{
+    "extensions": {
+        "devdocs": {
+            "origin": "./extensions/devdocs.ts"
+        }
+    }
+}

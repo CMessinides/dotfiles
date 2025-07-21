@@ -1,0 +1,5 @@
+{
+    "imports": {
+        "sunbeam": "https://deno.land/x/sunbeam@v1.0.0-rc.106/mod.ts"
+    }
+}
