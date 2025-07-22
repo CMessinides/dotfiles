@@ -1,10 +1,20 @@
 #!/usr/bin/env -S deno --allow-net=devdocs.io
-import * as sunbeam from "sunbeam";
+import * as sunbeam from "../lib/sunbeam/mod.ts";
 
-interface DevdocsDocset {
+interface DevDocsDocset {
     name: string;
     slug: string;
     release?: string;
+}
+
+interface DevDocsEntry {
+    name: string;
+    type: string;
+    path: string;
+}
+
+interface DevDocsEntryManifest {
+    entries: DevDocsEntry[];
 }
 
 const manifest = {
@@ -15,6 +25,18 @@ const manifest = {
             name: "search-docsets",
             title: "Search docsets",
             mode: "filter",
+        },
+        {
+            name: "search-entries",
+            title: "Search entries",
+            mode: "filter",
+            params: [
+                {
+                    name: "docset",
+                    type: "string",
+                    title: "Docset Slug",
+                },
+            ],
         },
     ],
 } as const satisfies sunbeam.Manifest;
@@ -28,7 +50,7 @@ const payload: sunbeam.Payload<typeof manifest> = JSON.parse(Deno.args[0]);
 
 if (payload.command === "search-docsets") {
     const res = await fetch(`https://devdocs.io/docs/docs.json`);
-    const docs: DevdocsDocset[] = await res.json();
+    const docs: DevDocsDocset[] = await res.json();
     const list: sunbeam.List = {
         items: docs.map((doc) => ({
             title: doc.name,
@@ -51,6 +73,34 @@ if (payload.command === "search-docsets") {
                 },
             ],
         })),
+    };
+
+    console.log(JSON.stringify(list));
+} else if (payload.command === "search-entries") {
+    const { docset } = payload.params;
+    const res = await fetch(`https://devdocs.io/docs/${docset}/index.json`);
+    const { entries }: DevDocsEntryManifest = await res.json();
+    const list: sunbeam.List = {
+        items: entries.map<sunbeam.ListItem>((entry) => {
+            const url = `https://devdocs.io/${docset}/${entry.path}`;
+            return {
+                title: entry.name,
+                subtitle: entry.type,
+                actions: [
+                    {
+                        title: "Open in Browser",
+                        type: "open",
+                        url,
+                    },
+                    {
+                        title: "Copy URL",
+                        type: "copy",
+                        key: "c",
+                        text: url,
+                    },
+                ],
+            };
+        }),
     };
 
     console.log(JSON.stringify(list));
