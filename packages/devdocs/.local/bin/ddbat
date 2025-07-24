@@ -1,0 +1,18 @@
+#!/bin/bash
+
+# ddbat - a thin wrapper around `bat` to make it work seamlessly
+# with my devdocs CLI (see dotfiles/tools/devdocs).
+
+set -e
+
+bat_args=()
+
+if [ -n "$DEVDOCS_FILENAME" ]; then
+    bat_args+=( "--file-name" "$DEVDOCS_FILENAME" )
+fi
+
+if [ -n "$DEVDOCS_LANGUAGE" ]; then
+    bat_args+=( "-l" "$DEVDOCS_LANGUAGE" )
+fi
+
+bat ${bat_args[@]} $@
