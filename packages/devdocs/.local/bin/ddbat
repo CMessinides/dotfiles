@@ -15,4 +15,8 @@ if [ -n "$DEVDOCS_LANGUAGE" ]; then
     bat_args+=( "-l" "$DEVDOCS_LANGUAGE" )
 fi
 
+if [ -n "$TMUX" ]; then
+    bat_args+=( "--paging" "always" )
+fi
+
 bat ${bat_args[@]} $@

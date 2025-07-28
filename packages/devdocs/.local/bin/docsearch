@@ -1,0 +1,39 @@
+#!/bin/bash
+
+set -e
+set -o pipefail
+
+TAB="$(printf '\t')"
+FZF_ARGS=( "-d" "$TAB" "--reverse" )
+
+_pick-docset() {
+    devdocs docsets list --porcelain | fzf "${FZF_ARGS[@]}" --with-nth 1 | cut -d "$TAB" -f 2
+}
+
+_pick-entry() {
+    devdocs entries list "$1" --porcelain | fzf "${FZF_ARGS[@]}" --with-nth 3 | cut -d "$TAB" -f 1
+}
+
+case "$1" in
+    "-h"|"--help")
+        echo "Usage: docsearch [docset]"
+        echo ""
+        echo "  When called without a docset, opens fzf to pick one."
+        echo ""
+        echo "  For docsets, run: devdocs docsets list"
+        echo ""
+        exit
+    ;;
+esac
+
+docset="$1"
+
+if [ -z "$docset" ]; then
+    docset="$(_pick-docset)"
+fi
+
+entry="$(_pick-entry "$docset")"
+
+clear
+
+devdocs entries show "$docset" "$entry"
