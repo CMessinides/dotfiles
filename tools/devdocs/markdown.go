@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"log/slog"
 
 	htmltomarkdown "github.com/JohannesKaufmann/html-to-markdown/v2"
 	"github.com/PuerkitoBio/goquery"
@@ -80,8 +79,6 @@ func (m *MarkdownConverter) Convert(src *HTMLDocument) (*MarkdownDocument, error
 	if err != nil {
 		return nil, err
 	}
-
-	slog.Debug("built table of contents", "len", len(idx.IDs))
 
 	return NewMarkdownDocumentFromHTML(src, data, idx), nil
 }

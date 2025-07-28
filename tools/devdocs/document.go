@@ -62,7 +62,7 @@ func NewDocumentIndex(sections []*DocumentSection) *DocumentIndex {
 }
 
 func BuildDocumentIndex(md []byte, ids []string) (*DocumentIndex, error) {
-	sections := make([]*DocumentSection, len(ids))
+	sections := make([]*DocumentSection, 0, len(ids))
 	scanner := bufio.NewScanner(bytes.NewReader(md))
 
 	i := 0
@@ -98,7 +98,7 @@ func BuildDocumentIndex(md []byte, ids []string) (*DocumentIndex, error) {
 
 		slog.Debug("found section", "level", s.Level, "id", s.ID, "line", s.Lines.Start)
 
-		sections[i] = s
+		sections = append(sections, s)
 		i++
 	}
 
@@ -106,14 +106,21 @@ func BuildDocumentIndex(md []byte, ids []string) (*DocumentIndex, error) {
 		return nil, err
 	}
 
+	slog.Debug("calculating section ranges", "count", len(sections))
 	stack := newStack[*DocumentSection]()
 	for _, cur := range sections {
+		slog.Debug("processing section", "id", cur.ID, "stacked", stack.Len())
 	inner:
 		for stack.Len() > 0 {
 			prev := stack.Top()
 			if prev.Level >= cur.Level {
 				stack.Pop()
 				prev.Lines.End = cur.Lines.Start - 1
+				slog.Debug("calculated range for section",
+					"id", prev.ID,
+					"start", prev.Lines.Start,
+					"end", prev.Lines.End,
+				)
 			} else {
 				break inner
 			}
@@ -122,12 +129,20 @@ func BuildDocumentIndex(md []byte, ids []string) (*DocumentIndex, error) {
 		stack.Push(cur)
 	}
 
+	slog.Debug("cleaning up section stack", "count", stack.Len())
 	for stack.Len() > 0 {
 		rem, _ := stack.Pop()
 		rem.Lines.End = lineno
+		slog.Debug("calculated range for section",
+			"id", rem.ID,
+			"start", rem.Lines.Start,
+			"end", rem.Lines.End,
+		)
 	}
 
-	return NewDocumentIndex(sections), nil
+	idx := NewDocumentIndex(sections)
+	slog.Debug("created document index", "count", idx.Count())
+	return idx, nil
 }
 
 // Get implements the Get method of the [Index] interface.
@@ -203,6 +218,10 @@ func (d *DocumentIndex) UnmarshalText(text []byte) error {
 	d.Ranges = ranges
 
 	return nil
+}
+
+func (d *DocumentIndex) Count() int {
+	return len(d.IDs)
 }
 
 // HTMLDocument is the HTML documentation for an entry, as retrieved from the
