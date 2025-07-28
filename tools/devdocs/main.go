@@ -103,6 +103,7 @@ func main() {
 		Context:  context.Background(),
 		Renderer: renderer,
 		Service: NewService(
+			DefaultCache,
 			DefaultClient,
 			DefaultMarkdownConverter,
 		),

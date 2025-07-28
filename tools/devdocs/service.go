@@ -6,12 +6,14 @@ import (
 )
 
 type Service struct {
+	cache     Cache
 	client    *Client
 	converter *MarkdownConverter
 }
 
-func NewService(client *Client, converter *MarkdownConverter) *Service {
+func NewService(cache Cache, client *Client, converter *MarkdownConverter) *Service {
 	return &Service{
+		cache:     cache,
 		client:    client,
 		converter: converter,
 	}
