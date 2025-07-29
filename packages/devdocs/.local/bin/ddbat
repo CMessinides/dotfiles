@@ -5,7 +5,7 @@
 
 set -e
 
-bat_args=()
+bat_args=( "--paging" "always" )
 
 if [ -n "$DEVDOCS_FILENAME" ]; then
     bat_args+=( "--file-name" "$DEVDOCS_FILENAME" )
@@ -15,8 +15,4 @@ if [ -n "$DEVDOCS_LANGUAGE" ]; then
     bat_args+=( "-l" "$DEVDOCS_LANGUAGE" )
 fi
 
-if [ -n "$TMUX" ]; then
-    bat_args+=( "--paging" "always" )
-fi
-
-bat ${bat_args[@]} $@
+bat --pager 'less -RK' ${bat_args[@]} $@

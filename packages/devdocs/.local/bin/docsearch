@@ -4,36 +4,40 @@ set -e
 set -o pipefail
 
 TAB="$(printf '\t')"
-FZF_ARGS=( "-d" "$TAB" "--reverse" )
+FZF_ARGS=( "-d" "$TAB" "--reverse" "--no-clear" )
+
+stage=1
+docset=""
+entry=""
 
 _pick-docset() {
     devdocs docsets list --porcelain | fzf "${FZF_ARGS[@]}" --with-nth 1 | cut -d "$TAB" -f 2
 }
 
 _pick-entry() {
-    devdocs entries list "$1" --porcelain | fzf "${FZF_ARGS[@]}" --with-nth 3 | cut -d "$TAB" -f 1
+    devdocs entries list "$docset" --porcelain | fzf "${FZF_ARGS[@]}" --with-nth 3 | cut -d "$TAB" -f 1
 }
 
-case "$1" in
-    "-h"|"--help")
-        echo "Usage: docsearch [docset]"
-        echo ""
-        echo "  When called without a docset, opens fzf to pick one."
-        echo ""
-        echo "  For docsets, run: devdocs docsets list"
-        echo ""
+_show-entry() {
+    devdocs entries show "$docset" "$entry"
+}
+
+while true; do
+    # echo "Stage: $stage, docset: $docset, entry: $entry"
+   case $stage in
+    1)
+        docset="$(_pick-docset)" && ((stage++)) || ((stage--))
+    ;;
+    2)
+        entry="$(_pick-entry)" && ((stage++)) || ((stage--))
+    ;;
+    3)
+        (_show-entry) && ((stage++)) || ((stage--))
+    ;;
+    *)
+        tput rmcup
         exit
     ;;
-esac
+   esac
+done
 
-docset="$1"
-
-if [ -z "$docset" ]; then
-    docset="$(_pick-docset)"
-fi
-
-entry="$(_pick-entry "$docset")"
-
-clear
-
-devdocs entries show "$docset" "$entry"
