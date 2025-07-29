@@ -19,6 +19,7 @@ _pick-entry() {
 }
 
 _show-entry() {
+    tput rmcup
     devdocs entries show "$docset" "$entry"
 }
 
