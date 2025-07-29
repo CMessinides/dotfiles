@@ -54,18 +54,18 @@ func (c EntriesShowCmd) Run(ctx *Context) error {
 }
 
 type CLI struct {
-	Debug     bool   `help:"Enable debug mode"`
-	Format    string `help:"Specify the output format" default:"console" enum:"console,porcelain,json"`
-	JSON      bool   `help:"Print JSON. Shortcut for --format=json" xor:"fmt"`
-	Porcelain bool   `help:"Print script-friendly text. Shortcut for --format=porcelain" xor:"fmt"`
+	Debug     bool `help:"Enable debug mode."`
+	Verbose   bool `help:"Enable verbose error messages."`
+	JSON      bool `help:"Print JSON." xor:"fmt"`
+	Porcelain bool `help:"Print tabular data for scripts." xor:"fmt"`
 	Docsets   struct {
-		List DocsetsListCmd `cmd:"" help:"List all docsets"`
-	} `cmd:"" help:"Get information about docsets"`
+		List DocsetsListCmd `cmd:"" help:"List all docsets."`
+	} `cmd:"" help:"Get information about docsets."`
 
 	Entries struct {
-		List EntriesListCmd `cmd:"" help:"List all entries in a docset"`
-		Show EntriesShowCmd `cmd:"" help:"Show documentation for an entry"`
-	} `cmd:"" help:"Get information about entries"`
+		List EntriesListCmd `cmd:"" help:"List all entries in a docset."`
+		Show EntriesShowCmd `cmd:"" help:"Show documentation for an entry."`
+	} `cmd:"" help:"Get information about entries."`
 }
 
 func main() {
@@ -83,18 +83,11 @@ func main() {
 	}
 
 	var renderer Renderer
-	// Prefer the shortcut flags --json and --porcelain.
 	if cli.JSON {
-		cli.Format = "json"
-	} else if cli.Porcelain {
-		cli.Format = "porcelain"
-	}
-	switch cli.Format {
-	case "json":
 		renderer = NewJSONRenderer(os.Stdout)
-	case "porcelain":
+	} else if cli.Porcelain {
 		renderer = NewPorcelainRenderer(os.Stdout)
-	default:
+	} else {
 		isTTY := term.IsTerminal(int(os.Stderr.Fd()))
 		renderer = NewConsoleRenderer(os.Stdout, os.Stderr, isTTY)
 	}
@@ -108,5 +101,13 @@ func main() {
 			DefaultMarkdownConverter,
 		),
 	})
-	ctx.FatalIfErrorf(err)
+	if err != nil {
+		reporter := NewConsoleReporter(os.Stderr)
+		if cli.Verbose {
+			reporter.Verbose = cli.Verbose
+		}
+
+		reporter.ReportError(err)
+		os.Exit(1)
+	}
 }

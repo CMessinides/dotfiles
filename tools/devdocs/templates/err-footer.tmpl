@@ -1,0 +1,7 @@
+
+{{if .Verbose -}}
+    {{printf "%s\n%s" (dim "Error details:") (printstack .Full) | indent}}
+{{- else -}}
+    {{"Pass --verbose to view error details." | dim | indent}}
+{{- end}}
+

@@ -18,6 +18,25 @@ const (
 	DefaultDevDocsDocumentsURL = "https://documents.devdocs.io"
 )
 
+type DocsetNotFoundError struct {
+	Docset string
+}
+
+// Error implements the error interface.
+func (d *DocsetNotFoundError) Error() string {
+	return fmt.Sprintf("docset %q not found", d.Docset)
+}
+
+type DocumentNotFoundError struct {
+	Docset string
+	Entry  EntryLocator
+}
+
+// Error implements the error interface.
+func (e *DocumentNotFoundError) Error() string {
+	return fmt.Sprintf("document %q not found in docset %q", e.Entry, e.Docset)
+}
+
 var ErrNotFound = errors.New("resource not found")
 
 type Client struct {
@@ -86,21 +105,29 @@ func (c *Client) ListEntries(ctx context.Context, docset string) (EntryManifest,
 		Entries: make([]Entry, 0),
 	}
 
+	fail := func(err error) error {
+		return fmt.Errorf("client.ListEntries(%q): %w", docset, err)
+	}
+
 	u := c.rootURL.JoinPath("/docs/", docset, "/index.json").String()
 	res, err := c.get(ctx, u)
 	if err != nil {
-		return m, fmt.Errorf("searched for docset with slug %q: %w", docset, err)
+		if errors.Is(err, ErrNotFound) {
+			err = &DocsetNotFoundError{Docset: docset}
+		}
+
+		return m, fail(err)
 	}
 
 	j := json.NewDecoder(res.Body)
 	err = j.Decode(&m)
 	if err != nil {
-		return m, err
+		return m, fail(err)
 	}
 
 	err = res.Body.Close()
 	if err != nil {
-		return m, nil
+		return m, fail(err)
 	}
 
 	m.Docset = docset
@@ -108,21 +135,32 @@ func (c *Client) ListEntries(ctx context.Context, docset string) (EntryManifest,
 }
 
 func (c *Client) GetDocument(ctx context.Context, docset string, entry EntryLocator) (*HTMLDocument, error) {
+	fail := func(err error) error {
+		return fmt.Errorf("client.GetDocument(%q, %q): %w", docset, entry, err)
+	}
+
 	u := c.documentsURL.JoinPath("/", docset, "/", entry.Path+".html").String()
 	res, err := c.get(ctx, u)
 	if err != nil {
-		return nil, fmt.Errorf("searched for path %q in docset %q: %w", entry.Path, docset, err)
+		if errors.Is(err, ErrNotFound) {
+			err = &DocumentNotFoundError{
+				Docset: docset,
+				Entry:  entry,
+			}
+		}
+
+		return nil, fail(err)
 	}
 
 	buf := new(bytes.Buffer)
 	_, err = io.Copy(buf, res.Body)
 	if err != nil {
-		return nil, err
+		return nil, fail(err)
 	}
 
 	err = res.Body.Close()
 	if err != nil {
-		return nil, err
+		return nil, fail(err)
 	}
 
 	return NewHTMLDocument(docset, entry, buf.Bytes()), nil
