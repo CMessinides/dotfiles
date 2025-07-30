@@ -18,36 +18,45 @@ type Reporter interface {
 	ReportError(err error)
 }
 
-func bold(a ...any) string {
+func fmtBold(a ...any) string {
 	return color.New(color.Bold).Sprint(a...)
 }
 
-func dim(a ...any) string {
+func fmtDim(a ...any) string {
 	return color.New(color.Faint).Sprint(a...)
 }
 
-func red(a ...any) string {
-	return color.New(color.FgRed).Sprint(a...)
+func fmtError(a ...any) string {
+	return color.New(color.FgRed, color.Bold).Sprint(a...)
 }
 
-func yellow(a ...any) string {
-	return color.New(color.FgYellow).Sprint(a...)
+func fmtWarning(a ...any) string {
+	return color.New(color.FgYellow, color.Bold).Sprint(a...)
 }
 
-func cyan(a ...any) string {
-	return color.New(color.FgCyan).Sprint(a...)
-}
-
-func quote(a any) string {
+func fmtQuote(a string) string {
 	return fmt.Sprintf(`"%s"`, a)
 }
 
-func emph(a any) string {
+func fmtArg(a ...any) string {
+	s := color.New(color.FgYellow).Sprint(a...)
 	if color.NoColor {
-		return quote(a)
-	} else {
-		return yellow(a)
+		s = fmtQuote(s)
 	}
+
+	return s
+}
+
+func fmtDocset(a ...any) string {
+	return color.New(color.FgMagenta).Sprint(a...)
+}
+
+func fmtEntry(a ...any) string {
+	return color.New(color.FgBlue).Sprint(a...)
+}
+
+func fmtCmd(a ...any) string {
+	return color.New(color.FgCyan, color.Bold).Sprint(a...)
 }
 
 func indent(count int, text string) string {
@@ -66,7 +75,7 @@ func inspect(err error) string {
 	parts := strings.SplitSeq(err.Error(), ": ")
 
 	for p := range parts {
-		fmt.Fprintln(s, dim(p))
+		fmt.Fprintln(s, fmtDim(p))
 	}
 
 	return strings.TrimRight(s.String(), " \n\t")
@@ -76,13 +85,15 @@ func inspect(err error) string {
 var tmplFS embed.FS
 
 var funcMap = template.FuncMap{
-	"bold":    bold,
-	"dim":     dim,
-	"red":     red,
-	"yellow":  yellow,
-	"cyan":    cyan,
-	"quote":   quote,
-	"emph":    emph,
+	"cmd":     fmtCmd,
+	"arg":     fmtArg,
+	"docset":  fmtDocset,
+	"entry":   fmtEntry,
+	"error":   fmtError,
+	"warning": fmtWarning,
+	"bold":    fmtBold,
+	"dim":     fmtDim,
+	"quote":   fmtQuote,
 	"indent":  indent,
 	"inspect": inspect,
 }

@@ -1,10 +1,10 @@
 {{template "error-header"
     (printf
         "entry %s not found in docset %s"
-        (.Err.Path | emph)
-        (.Err.Docset | emph))}}
+        (.Err.Path | arg)
+        (.Err.Docset | arg))}}
 
 To list available entries, run:
-  {{printf "devdocs entries list %s" .Err.Docset | yellow}}
+  {{printf "devdocs entries list %s" .Err.Docset | cmd }}
 
 {{template "error-footer" .}}

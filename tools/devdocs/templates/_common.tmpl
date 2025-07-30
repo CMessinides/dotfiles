@@ -1,5 +1,5 @@
-{{define "error-header" -}}{{ "Error" | bold | red }}: {{ . }}{{end}}
-{{define "warning-header" }}{{ "Warning" | bold | yellow }}: {{ . }}{{end}}
+{{define "error-header" -}}{{ "Error" | error }}: {{ . }}{{end}}
+{{define "warning-header" }}{{ "Warning" | warning }}: {{ . }}{{end}}
 
 {{define "error-footer" -}}
     {{- if .Verbose -}}

@@ -43,6 +43,7 @@ type Client struct {
 	*http.Client
 	rootURL      *url.URL
 	documentsURL *url.URL
+	errs         *ErrorBuilder
 }
 
 type ClientOptions struct {
@@ -65,6 +66,7 @@ func NewClient(opts ClientOptions) *Client {
 		Client:       c,
 		rootURL:      mustParseURL(opts.RootURL),
 		documentsURL: mustParseURL(opts.DocumentsURL),
+		errs:         NewErrorBuilder(WithPrefix("client")),
 	}
 }
 
@@ -105,9 +107,7 @@ func (c *Client) ListEntries(ctx context.Context, docset string) (EntryManifest,
 		Entries: make([]Entry, 0),
 	}
 
-	fail := func(err error) error {
-		return fmt.Errorf("client.ListEntries(%q): %w", docset, err)
-	}
+	errs := c.errs.Extend(WithMethodLabel("ListEntries", docset))
 
 	u := c.rootURL.JoinPath("/docs/", docset, "/index.json").String()
 	res, err := c.get(ctx, u)
@@ -116,18 +116,18 @@ func (c *Client) ListEntries(ctx context.Context, docset string) (EntryManifest,
 			err = &DocsetNotFoundError{Docset: docset}
 		}
 
-		return m, fail(err)
+		return m, errs.Wrap("could not get entry manifest", err)
 	}
 
 	j := json.NewDecoder(res.Body)
 	err = j.Decode(&m)
 	if err != nil {
-		return m, fail(err)
+		return m, errs.Wrap("could not decode entry manifest JSON", err)
 	}
 
 	err = res.Body.Close()
 	if err != nil {
-		return m, fail(err)
+		return m, errs.Wrap("could not close response stream", err)
 	}
 
 	m.Docset = docset
@@ -135,10 +135,6 @@ func (c *Client) ListEntries(ctx context.Context, docset string) (EntryManifest,
 }
 
 func (c *Client) GetDocument(ctx context.Context, docset string, entry EntryLocator) (*HTMLDocument, error) {
-	fail := func(err error) error {
-		return fmt.Errorf("client.GetDocument(%q, %q): %w", docset, entry, err)
-	}
-
 	u := c.documentsURL.JoinPath("/", docset, "/", entry.Path+".html").String()
 	res, err := c.get(ctx, u)
 	if err != nil {
@@ -149,18 +145,18 @@ func (c *Client) GetDocument(ctx context.Context, docset string, entry EntryLoca
 			}
 		}
 
-		return nil, fail(err)
+		return nil, c.errs.Wrap("could not get document", err)
 	}
 
 	buf := new(bytes.Buffer)
 	_, err = io.Copy(buf, res.Body)
 	if err != nil {
-		return nil, fail(err)
+		return nil, c.errs.Wrap("could not read response stream", err)
 	}
 
 	err = res.Body.Close()
 	if err != nil {
-		return nil, fail(err)
+		return nil, c.errs.Wrap("could not close response stream", err)
 	}
 
 	return NewHTMLDocument(docset, entry, buf.Bytes()), nil
