@@ -70,7 +70,7 @@ type CLI struct {
 
 func main() {
 	var cli CLI
-	ctx := kong.Parse(
+	kctx := kong.Parse(
 		&cli,
 		kong.UsageOnError(),
 		kong.ConfigureHelp(kong.HelpOptions{
@@ -92,7 +92,7 @@ func main() {
 		renderer = NewConsoleRenderer(os.Stdout, os.Stderr, isTTY)
 	}
 
-	err := ctx.Run(&Context{
+	ctx := &Context{
 		Context:  context.Background(),
 		Renderer: renderer,
 		Service: NewService(
@@ -100,7 +100,8 @@ func main() {
 			DefaultClient,
 			DefaultMarkdownConverter,
 		),
-	})
+	}
+	err := kctx.Run(ctx)
 	if err != nil {
 		reporter := NewConsoleReporter(os.Stderr)
 		if cli.Verbose {

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"regexp"
 	"strings"
 	"text/template"
 
@@ -51,40 +50,41 @@ func emph(a any) string {
 	}
 }
 
-func indent(a any) string {
-	return fmt.Sprintf("  %s", a)
-}
-
-var funcPrefixPattern = regexp.MustCompile(`^\s*(?:\w+\.)?\w+\([^\)]*\)`)
-
-func printstack(err error) string {
+func indent(count int, text string) string {
 	s := new(strings.Builder)
-	parts := strings.SplitSeq(err.Error(), ":")
 
-	for p := range parts {
-		if funcPrefixPattern.MatchString(p) {
-			s.WriteString("\n  " + cyan(strings.TrimSpace(p)))
-		} else {
-			s.WriteString(dim(":" + p))
-		}
+	spaces := strings.Repeat(" ", count)
+	for line := range strings.Lines(text) {
+		fmt.Fprint(s, spaces+line)
 	}
 
 	return s.String()
+}
+
+func inspect(err error) string {
+	s := new(strings.Builder)
+	parts := strings.SplitSeq(err.Error(), ": ")
+
+	for p := range parts {
+		fmt.Fprintln(s, dim(p))
+	}
+
+	return strings.TrimRight(s.String(), " \n\t")
 }
 
 //go:embed templates/*.tmpl
 var tmplFS embed.FS
 
 var funcMap = template.FuncMap{
-	"bold":       bold,
-	"dim":        dim,
-	"red":        red,
-	"yellow":     yellow,
-	"cyan":       cyan,
-	"quote":      quote,
-	"emph":       emph,
-	"indent":     indent,
-	"printstack": printstack,
+	"bold":    bold,
+	"dim":     dim,
+	"red":     red,
+	"yellow":  yellow,
+	"cyan":    cyan,
+	"quote":   quote,
+	"emph":    emph,
+	"indent":  indent,
+	"inspect": inspect,
 }
 
 var templates = template.Must(
@@ -107,80 +107,55 @@ func NewConsoleReporter(w io.Writer) *ConsoleReporter {
 	}
 }
 
-type viewData struct {
-	Verbose bool
+type ErrorReport struct {
+	Code    string
 	Err     error
 	Full    error
-	subject string
+	Verbose bool
 }
 
-func (e viewData) Subject() string {
-	if e.subject != "" {
-		return e.subject
+func (r *ErrorReport) narrow(code string, err error) *ErrorReport {
+	r.Code = code
+	r.Err = err
+	return r
+}
+
+func DefaultErrorReport(err error) *ErrorReport {
+	return &ErrorReport{
+		Code: "generic",
+		Err:  err,
+		Full: err,
 	}
-
-	return e.Err.Error()
 }
 
-func (c *ConsoleReporter) ReportError(err error) {
+func NewErrorReport(err error) *ErrorReport {
+	r := DefaultErrorReport(err)
+
 	var dnf *DocsetNotFoundError
 	if errors.As(err, &dnf) {
-		c.reportDocsetNotFound(dnf, err)
-		return
+		return r.narrow("docset-not-found", dnf)
 	}
 
 	var enf *EntryNotFoundError
 	if errors.As(err, &enf) {
-		c.reportEntryNotFound(enf, err)
-		return
+		return r.narrow("entry-not-found", enf)
 	}
 
-	c.reportGenericError(err)
+	return r
+}
+
+func (c *ConsoleReporter) ReportError(err error) {
+	r := NewErrorReport(err)
+	r.Verbose = c.Verbose
+
+	t := fmt.Sprintf("err-%s.tmpl", r.Code)
+	c.executeTemplate(t, r)
 }
 
 func (c *ConsoleReporter) ReportWarning(msg string) {
 }
 
 func (c *ConsoleReporter) ReportStatus(msg string) {
-}
-
-func (c *ConsoleReporter) reportDocsetNotFound(err *DocsetNotFoundError, full error) {
-	c.error(
-		err,
-		full,
-		fmt.Sprintf("docset %s not found", emph(err.Docset)),
-		"err-docset-not-found.tmpl",
-	)
-}
-
-func (c *ConsoleReporter) reportEntryNotFound(err *EntryNotFoundError, full error) {
-	c.error(
-		err,
-		full,
-		fmt.Sprintf(
-			"entry %s not found in docset %s",
-			emph(err.Path),
-			emph(err.Docset),
-		),
-		"err-entry-not-found.tmpl",
-	)
-}
-
-func (c *ConsoleReporter) reportGenericError(err error) {
-	c.error(err, err, "an unknown error occurred", "err-generic.tmpl")
-}
-
-func (c *ConsoleReporter) error(err error, full error, subject string, template string) {
-	d := viewData{
-		Verbose: c.Verbose,
-		Err:     err,
-		Full:    full,
-		subject: subject,
-	}
-
-	c.executeTemplate("err-header.tmpl", d)
-	c.executeTemplate(template, d)
-	c.executeTemplate("err-footer.tmpl", d)
 }
 
 func (c *ConsoleReporter) executeTemplate(name string, data any) error {

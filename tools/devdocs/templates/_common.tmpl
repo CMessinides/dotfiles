@@ -1,0 +1,13 @@
+{{define "error-header" -}}{{ "Error" | bold | red }}: {{ . }}{{end}}
+{{define "warning-header" }}{{ "Warning" | bold | yellow }}: {{ . }}{{end}}
+
+{{define "error-footer" -}}
+    {{- if .Verbose -}}
+        {{ printf "%s\n%s"
+            ("Error details:" | dim)
+            (inspect .Full | indent 2) }}
+    {{- else -}}
+        {{ `Rerun with "--verbose" to view error details.` | dim }}
+    {{- end -}}
+{{- end}}
+
