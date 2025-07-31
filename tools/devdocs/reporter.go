@@ -139,7 +139,7 @@ func (r *ErrorReport) narrow(code string, err error) *ErrorReport {
 
 func DefaultErrorReport(err error) *ErrorReport {
 	return &ErrorReport{
-		Code: "generic",
+		Code: "default",
 		Err:  err,
 		Full: err,
 	}
