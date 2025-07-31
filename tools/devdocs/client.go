@@ -18,7 +18,23 @@ const (
 	DefaultDevDocsDocumentsURL = "https://documents.devdocs.io"
 )
 
+type HTTPResponseError struct {
+	LabeledError
+	StatusCode int
+	Status     string
+}
+
+func isNotFound(err error) bool {
+	var h *HTTPResponseError
+	if errors.As(err, &h) {
+		return h.StatusCode == http.StatusNotFound
+	}
+
+	return false
+}
+
 type DocsetNotFoundError struct {
+	LabeledError
 	Docset string
 }
 
@@ -28,6 +44,7 @@ func (d *DocsetNotFoundError) Error() string {
 }
 
 type DocumentNotFoundError struct {
+	LabeledError
 	Docset string
 	Entry  EntryLocator
 }
@@ -112,11 +129,17 @@ func (c *Client) ListEntries(ctx context.Context, docset string) (EntryManifest,
 	u := c.rootURL.JoinPath("/docs/", docset, "/index.json").String()
 	res, err := c.get(ctx, u)
 	if err != nil {
-		if errors.Is(err, ErrNotFound) {
-			err = &DocsetNotFoundError{Docset: docset}
+		if isNotFound(err) {
+			return m, &DocsetNotFoundError{
+				LabeledError: errs.Wrap(
+					fmt.Sprintf("docset %q not found", docset),
+					err,
+				),
+				Docset: docset,
+			}
+		} else {
+			return m, errs.Wrap("could not get entry manifest", err)
 		}
-
-		return m, errs.Wrap("could not get entry manifest", err)
 	}
 
 	j := json.NewDecoder(res.Body)
@@ -135,17 +158,23 @@ func (c *Client) ListEntries(ctx context.Context, docset string) (EntryManifest,
 }
 
 func (c *Client) GetDocument(ctx context.Context, docset string, entry EntryLocator) (*HTMLDocument, error) {
+	errs := c.errs.Extend(
+		WithMethodLabel("GetDocument", docset, entry),
+	)
+
 	u := c.documentsURL.JoinPath("/", docset, "/", entry.Path+".html").String()
 	res, err := c.get(ctx, u)
 	if err != nil {
-		if errors.Is(err, ErrNotFound) {
-			err = &DocumentNotFoundError{
-				Docset: docset,
-				Entry:  entry,
+		if isNotFound(err) {
+			return nil, &DocumentNotFoundError{
+				LabeledError: errs.Wrap(
+					fmt.Sprintf("document %q not found in docset %q", entry, docset),
+					err,
+				),
 			}
+		} else {
+			return nil, c.errs.Wrap("could not get document", err)
 		}
-
-		return nil, c.errs.Wrap("could not get document", err)
 	}
 
 	buf := new(bytes.Buffer)
@@ -164,16 +193,19 @@ func (c *Client) GetDocument(ctx context.Context, docset string, entry EntryLoca
 
 func (c *Client) get(ctx context.Context, url string) (*http.Response, error) {
 	slog.Debug("initiating request", "url", url, "method", "GET")
+	errs := c.errs.Extend(
+		WithMethodLabel("get", url),
+	)
 	req, err := http.NewRequestWithContext(ctx, "GET", url, http.NoBody)
 	if err != nil {
 		slog.Debug("failed to create request", "url", url, "err", err)
-		return nil, err
+		return nil, errs.Wrap("failed to create request", err)
 	}
 
 	res, err := c.Do(req)
 	if err != nil {
 		slog.Debug("failed to get response", "url", url, "err", err)
-		return nil, err
+		return nil, errs.Wrap("failed to get response", err)
 	}
 
 	slog.Debug(
@@ -184,10 +216,12 @@ func (c *Client) get(ctx context.Context, url string) (*http.Response, error) {
 	)
 
 	if res.StatusCode < 200 || res.StatusCode >= 400 {
-		if res.StatusCode == http.StatusNotFound {
-			return nil, ErrNotFound
-		} else {
-			return nil, fmt.Errorf("received HTTP error from DevDocs: %s", res.Status)
+		return nil, &HTTPResponseError{
+			LabeledError: errs.New(
+				fmt.Sprintf("got HTTP response error from DevDocs: %s", res.Status),
+			),
+			StatusCode: res.StatusCode,
+			Status:     res.Status,
 		}
 	}
 

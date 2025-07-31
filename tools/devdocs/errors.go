@@ -6,20 +6,35 @@ import (
 	"strings"
 )
 
-type StructuredError struct {
-	Label   string
-	Message string
-	inner   error
+type LabeledError interface {
+	error
+	Label() string
+	Body() string
 }
 
-// String implements the [fmt.Stringer] interface.
-func (s *StructuredError) String() string {
-	return s.Error()
+type StructuredError struct {
+	label string
+	msg   string
+	inner error
+}
+
+// Label implements the [LabeledError] interface.
+func (s *StructuredError) Label() string {
+	return s.label
+}
+
+// Body implements the [LabeledError] interface.
+func (s *StructuredError) Body() string {
+	return s.msg
+}
+
+func (s *StructuredError) Unwrap() error {
+	return s.inner
 }
 
 // Error implements the error interface.
 func (s *StructuredError) Error() string {
-	m := fmt.Sprintf("%s: %s", s.Label, s.Message)
+	m := fmt.Sprintf("%s: %s", s.label, s.msg)
 	if s.inner != nil {
 		return m + ": " + s.inner.Error()
 	} else {
@@ -27,18 +42,24 @@ func (s *StructuredError) Error() string {
 	}
 }
 
-func (s *StructuredError) Unwrap() error {
-	return s.inner
-}
-
 type ErrorTransformer interface {
 	TransformError(err *StructuredError)
+	Chain(t ...ErrorTransformer) ErrorTransformer
 }
 
 type ErrorTransformerFunc func(err *StructuredError)
 
 func (e ErrorTransformerFunc) TransformError(err *StructuredError) {
 	e(err)
+}
+
+func (e ErrorTransformerFunc) Chain(t ...ErrorTransformer) ErrorTransformer {
+	return ErrorTransformerFunc(func(err *StructuredError) {
+		e.TransformError(err)
+		for _, next := range t {
+			next.TransformError(err)
+		}
+	})
 }
 
 type ErrorBuilder struct {
@@ -53,14 +74,14 @@ func (e *ErrorBuilder) Extend(t ...ErrorTransformer) *ErrorBuilder {
 
 func (e *ErrorBuilder) New(msg string) *StructuredError {
 	return e.build(&StructuredError{
-		Message: msg,
+		msg: msg,
 	})
 }
 
 func (e *ErrorBuilder) Wrap(msg string, err error) *StructuredError {
 	return e.build(&StructuredError{
-		Message: msg,
-		inner:   err,
+		msg:   msg,
+		inner: err,
 	})
 }
 
@@ -80,27 +101,31 @@ func NewErrorBuilder(t ...ErrorTransformer) *ErrorBuilder {
 
 func WithPrefix(prefix string) ErrorTransformer {
 	return ErrorTransformerFunc(func(err *StructuredError) {
-		err.Label = prefix + err.Label
+		err.label = prefix + err.label
 	})
 }
 
 func WithSuffix(suffix string) ErrorTransformer {
 	return ErrorTransformerFunc(func(err *StructuredError) {
-		err.Label = err.Label + suffix
+		err.label = err.label + suffix
 	})
 }
 
-func WithMethodLabel(method string, args ...any) ErrorTransformer {
+func WithFunctionLabel(name string, args ...any) ErrorTransformer {
 	s := new(strings.Builder)
-	fmt.Fprintf(s, ".%s(", method)
+	fmt.Fprintf(s, "%s(", name)
 	for i, a := range args {
 		isLast := i == len(args)-1
 		if isLast {
-			fmt.Fprintf(s, "%q)", a)
+			fmt.Fprintf(s, "%#v)", a)
 		} else {
-			fmt.Fprintf(s, "%q, ", a)
+			fmt.Fprintf(s, "%#v, ", a)
 		}
 	}
 
 	return WithSuffix(s.String())
+}
+
+func WithMethodLabel(method string, args ...any) ErrorTransformer {
+	return WithSuffix(".").Chain(WithFunctionLabel(method, args...))
 }

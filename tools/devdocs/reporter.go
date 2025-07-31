@@ -72,13 +72,19 @@ func indent(count int, text string) string {
 
 func inspect(err error) string {
 	s := new(strings.Builder)
-	parts := strings.SplitSeq(err.Error(), ": ")
 
-	for p := range parts {
-		fmt.Fprintln(s, fmtDim(p))
+	var l LabeledError
+	for err != nil {
+		if errors.As(err, &l) {
+			fmt.Fprintf(s, "%s: %s\n", l.Label(), l.Body())
+		} else {
+			fmt.Fprintf(s, "<err>: %s\n", err.Error())
+		}
+
+		err = errors.Unwrap(err)
 	}
 
-	return strings.TrimRight(s.String(), " \n\t")
+	return s.String()
 }
 
 //go:embed templates/*.tmpl

@@ -6,30 +6,23 @@ import (
 )
 
 type EntryNotFoundError struct {
+	LabeledError
 	Docset string
 	Path   string
-}
-
-// Error implements the error interface.
-func (e *EntryNotFoundError) Error() string {
-	return fmt.Sprintf("entry %q not found in docset %q", e.Path, e.Docset)
 }
 
 type SectionNotFoundError struct {
+	LabeledError
 	ID     string
 	Path   string
 	Docset string
-}
-
-// Error implements the error interface.
-func (s *SectionNotFoundError) Error() string {
-	return fmt.Sprintf("section %q not found in document %q", s.ID, s.Path)
 }
 
 type Service struct {
 	cache     Cache
 	client    *Client
 	converter *MarkdownConverter
+	errs      *ErrorBuilder
 }
 
 func NewService(cache Cache, client *Client, converter *MarkdownConverter) *Service {
@@ -37,73 +30,77 @@ func NewService(cache Cache, client *Client, converter *MarkdownConverter) *Serv
 		cache:     cache,
 		client:    client,
 		converter: converter,
+		errs: NewErrorBuilder(
+			WithPrefix("service"),
+		),
 	}
 }
 
 func (s *Service) ListDocsets(ctx context.Context) ([]Docset, error) {
-	fail := func(err error, msg string) error {
-		return fmt.Errorf("ListDocsets(): %s: %w", msg, err)
-	}
+	errs := s.errs.Extend(WithMethodLabel("ListDocsets"))
 
 	d, err := s.client.ListDocsets(ctx)
 	if err != nil {
-		return d, fail(err, "could not get docsets")
+		return d, errs.Wrap("could not get docsets", err)
 	}
 
 	return d, nil
 }
 
 func (s *Service) ListEntries(ctx context.Context, docset string) ([]*Entry, error) {
-	fail := func(err error, msg string) error {
-		return fmt.Errorf("service.ListEntries(%q): %s: %w", docset, msg, err)
-	}
+	errs := s.errs.Extend(WithMethodLabel("ListEntries", docset))
 
 	idx, err := s.entryIndex(ctx, docset)
 	if err != nil {
-		return nil, fail(err, "could not index entries")
+		return nil, errs.Wrap("could not index entries", err)
 	}
 
 	return idx.Entries(), nil
 }
 
 func (s *Service) ShowEntry(ctx context.Context, docset string, path string) (*EntryView, error) {
-	fail := func(err error, msg string) error {
-		return fmt.Errorf("service.ShowEntry(%q, %q): %s: %w", docset, path, msg, err)
-	}
+	errs := s.errs.Extend(WithMethodLabel("ShowEntry", docset, path))
 
 	idx, err := s.entryIndex(ctx, docset)
 	if err != nil {
-		return nil, fail(err, "could not index entries")
+		return nil, errs.Wrap("could not index entries", err)
 	}
 
 	entry, ok := idx.Get(path)
 	if !ok {
-		return nil, fail(&EntryNotFoundError{
+		return nil, &EntryNotFoundError{
+			LabeledError: errs.New(
+				fmt.Sprintf(
+					"docset %q index has no entry %q", docset, path),
+			),
 			Docset: docset,
 			Path:   path,
-		}, "entry not found")
+		}
 	}
 
 	loc := NewEntryLocator(entry.Path)
 	html, err := s.client.GetDocument(ctx, docset, loc)
 	if err != nil {
-		return nil, fail(err, "could not get document")
+		return nil, errs.Wrap("could not get document", err)
 	}
 
 	md, err := s.converter.Convert(html)
 	if err != nil {
-		return nil, fail(err, "could not convert document to Markdown")
+		return nil, errs.Wrap("could not convert document to Markdown", err)
 	}
 
 	var view *EntryView
 	if loc.HasFragment() {
 		lines, ok := md.Index.Get(loc.Fragment)
 		if !ok {
-			return nil, fail(&SectionNotFoundError{
+			return nil, &SectionNotFoundError{
+				LabeledError: errs.New(
+					fmt.Sprintf("document %q has no section with ID %q", loc.Path, loc.Fragment),
+				),
 				ID:     loc.Fragment,
 				Path:   loc.Path,
 				Docset: docset,
-			}, "section not found")
+			}
 		}
 
 		view = NewExcerptView(md, lines)
@@ -115,13 +112,9 @@ func (s *Service) ShowEntry(ctx context.Context, docset string, path string) (*E
 }
 
 func (s *Service) entryIndex(ctx context.Context, docset string) (*EntryIndex, error) {
-	fail := func(err error, msg string) error {
-		return fmt.Errorf("service.entryIndex(%q): %s: %w", docset, msg, err)
-	}
-
 	m, err := s.client.ListEntries(ctx, docset)
 	if err != nil {
-		return nil, fail(err, "could not get entries")
+		return nil, err
 	}
 
 	return NewEntryIndex(m.Entries), nil

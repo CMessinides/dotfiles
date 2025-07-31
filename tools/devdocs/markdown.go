@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"fmt"
 
 	htmltomarkdown "github.com/JohannesKaufmann/html-to-markdown/v2"
 	"github.com/PuerkitoBio/goquery"
@@ -42,19 +41,20 @@ var AddLanguageClassesToCodeBlocks = HTMLPreprocessorFunc(func(s *goquery.Select
 
 type MarkdownConverter struct {
 	Preprocessors []HTMLPreprocessor
+	errs          *ErrorBuilder
 }
 
 func (m *MarkdownConverter) Convert(src *HTMLDocument) (*MarkdownDocument, error) {
 	html, err := goquery.NewDocumentFromReader(src.Content.Reader())
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse HTML: %w", err)
+		return nil, m.errs.Wrap("failed to parse HTML", err)
 	}
 
 	sel := html.Selection
 	for _, p := range m.Preprocessors {
 		sel, err = p.Preprocess(sel)
 		if err != nil {
-			return nil, fmt.Errorf("failed to preprocess HTML: %w", err)
+			return nil, m.errs.Wrap("failed to preprocess HTML", err)
 		}
 	}
 
@@ -67,7 +67,7 @@ func (m *MarkdownConverter) Convert(src *HTMLDocument) (*MarkdownDocument, error
 	for _, node := range sel.Nodes {
 		md, err := htmltomarkdown.ConvertNode(node)
 		if err != nil {
-			return nil, fmt.Errorf("failed to convert node to Markdown: %w", err)
+			return nil, m.errs.Wrap("failed to convert node to Markdown", err)
 		}
 
 		buf.Write(md)
@@ -77,7 +77,7 @@ func (m *MarkdownConverter) Convert(src *HTMLDocument) (*MarkdownDocument, error
 
 	idx, err := BuildDocumentIndex(data, ids)
 	if err != nil {
-		return nil, err
+		return nil, m.errs.Wrap("failed to create document index", err)
 	}
 
 	return NewMarkdownDocumentFromHTML(src, data, idx), nil
@@ -94,6 +94,7 @@ func WithPreprocessors(p ...HTMLPreprocessor) MarkdownConverterConfigFunc {
 func NewMarkdownConverter(configs ...MarkdownConverterConfigFunc) *MarkdownConverter {
 	m := &MarkdownConverter{
 		Preprocessors: make([]HTMLPreprocessor, 0),
+		errs:          NewErrorBuilder(WithPrefix("MarkdownConverter")),
 	}
 
 	for _, configure := range configs {

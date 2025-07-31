@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"os"
 
@@ -108,7 +109,12 @@ func main() {
 			reporter.Verbose = cli.Verbose
 		}
 
-		reporter.ReportError(err)
+		var l LabeledError
+		if errors.As(err, &l) {
+			reporter.ReportError(l)
+		} else {
+			reporter.ReportError(err)
+		}
 		os.Exit(1)
 	}
 }

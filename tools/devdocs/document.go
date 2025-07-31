@@ -62,6 +62,9 @@ func NewDocumentIndex(sections []*DocumentSection) *DocumentIndex {
 }
 
 func BuildDocumentIndex(md []byte, ids []string) (*DocumentIndex, error) {
+	errs := NewErrorBuilder(
+		WithFunctionLabel("BuildDocumentIndex", md, ids),
+	)
 	sections := make([]*DocumentSection, 0, len(ids))
 	scanner := bufio.NewScanner(bytes.NewReader(md))
 
@@ -103,7 +106,7 @@ func BuildDocumentIndex(md []byte, ids []string) (*DocumentIndex, error) {
 	}
 
 	if err := scanner.Err(); err != nil {
-		return nil, err
+		return nil, errs.Wrap("encounted error while scanning Markdown", err)
 	}
 
 	slog.Debug("calculating section ranges", "count", len(sections))
