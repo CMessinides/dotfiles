@@ -1,5 +1,5 @@
 {{template "error-header"
-    (printf "docset %s not found" (.Err.Docset | arg))}}
+    (printf "docset %s not found" (.Err.Docset | quote | arg))}}
 
 To list available docsets, run:
   {{"devdocs docsets list" | cmd}}

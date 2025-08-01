@@ -1,8 +1,8 @@
 {{template "error-header"
     (printf
         "entry %s not found in docset %s"
-        (.Err.Path | arg)
-        (.Err.Docset | arg))}}
+        (.Err.Path | quote | arg)
+        (.Err.Docset | quote | arg))}}
 
 To list available entries, run:
   {{printf "devdocs entries list %s" .Err.Docset | cmd }}

@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/cmessinides/dotfiles/tools/devdocs/internal/report"
 )
 
 const (
@@ -19,7 +21,7 @@ const (
 )
 
 type HTTPResponseError struct {
-	LabeledError
+	report.Err
 	StatusCode int
 	Status     string
 }
@@ -34,7 +36,7 @@ func isNotFound(err error) bool {
 }
 
 type DocsetNotFoundError struct {
-	LabeledError
+	report.Err
 	Docset string
 }
 
@@ -44,23 +46,16 @@ func (d *DocsetNotFoundError) Error() string {
 }
 
 type DocumentNotFoundError struct {
-	LabeledError
+	report.Err
 	Docset string
 	Entry  EntryLocator
 }
-
-// Error implements the error interface.
-func (e *DocumentNotFoundError) Error() string {
-	return fmt.Sprintf("document %q not found in docset %q", e.Entry, e.Docset)
-}
-
-var ErrNotFound = errors.New("resource not found")
 
 type Client struct {
 	*http.Client
 	rootURL      *url.URL
 	documentsURL *url.URL
-	errs         *ErrorBuilder
+	errs         *report.Chain
 }
 
 type ClientOptions struct {
@@ -83,7 +78,7 @@ func NewClient(opts ClientOptions) *Client {
 		Client:       c,
 		rootURL:      mustParseURL(opts.RootURL),
 		documentsURL: mustParseURL(opts.DocumentsURL),
-		errs:         NewErrorBuilder(WithPrefix("client")),
+		errs:         report.NewChain(report.WithPrefix("Client")),
 	}
 }
 
@@ -124,14 +119,16 @@ func (c *Client) ListEntries(ctx context.Context, docset string) (EntryManifest,
 		Entries: make([]Entry, 0),
 	}
 
-	errs := c.errs.Extend(WithMethodLabel("ListEntries", docset))
+	errs := c.errs.Extend(
+		report.WithMethodLabel("ListEntries", docset),
+	)
 
 	u := c.rootURL.JoinPath("/docs/", docset, "/index.json").String()
 	res, err := c.get(ctx, u)
 	if err != nil {
 		if isNotFound(err) {
 			return m, &DocsetNotFoundError{
-				LabeledError: errs.Wrap(
+				Err: errs.Wrap(
 					fmt.Sprintf("docset %q not found", docset),
 					err,
 				),
@@ -159,7 +156,7 @@ func (c *Client) ListEntries(ctx context.Context, docset string) (EntryManifest,
 
 func (c *Client) GetDocument(ctx context.Context, docset string, entry EntryLocator) (*HTMLDocument, error) {
 	errs := c.errs.Extend(
-		WithMethodLabel("GetDocument", docset, entry),
+		report.WithMethodLabel("GetDocument", docset, entry),
 	)
 
 	u := c.documentsURL.JoinPath("/", docset, "/", entry.Path+".html").String()
@@ -167,7 +164,7 @@ func (c *Client) GetDocument(ctx context.Context, docset string, entry EntryLoca
 	if err != nil {
 		if isNotFound(err) {
 			return nil, &DocumentNotFoundError{
-				LabeledError: errs.Wrap(
+				Err: errs.Wrap(
 					fmt.Sprintf("document %q not found in docset %q", entry, docset),
 					err,
 				),
@@ -194,7 +191,7 @@ func (c *Client) GetDocument(ctx context.Context, docset string, entry EntryLoca
 func (c *Client) get(ctx context.Context, url string) (*http.Response, error) {
 	slog.Debug("initiating request", "url", url, "method", "GET")
 	errs := c.errs.Extend(
-		WithMethodLabel("get", url),
+		report.WithMethodLabel("get", url),
 	)
 	req, err := http.NewRequestWithContext(ctx, "GET", url, http.NoBody)
 	if err != nil {
@@ -217,7 +214,7 @@ func (c *Client) get(ctx context.Context, url string) (*http.Response, error) {
 
 	if res.StatusCode < 200 || res.StatusCode >= 400 {
 		return nil, &HTTPResponseError{
-			LabeledError: errs.New(
+			Err: errs.New(
 				fmt.Sprintf("got HTTP response error from DevDocs: %s", res.Status),
 			),
 			StatusCode: res.StatusCode,

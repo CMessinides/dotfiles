@@ -5,6 +5,7 @@ import (
 
 	htmltomarkdown "github.com/JohannesKaufmann/html-to-markdown/v2"
 	"github.com/PuerkitoBio/goquery"
+	"github.com/cmessinides/dotfiles/tools/devdocs/internal/report"
 )
 
 type HTMLPreprocessor interface {
@@ -41,7 +42,7 @@ var AddLanguageClassesToCodeBlocks = HTMLPreprocessorFunc(func(s *goquery.Select
 
 type MarkdownConverter struct {
 	Preprocessors []HTMLPreprocessor
-	errs          *ErrorBuilder
+	errs          *report.Chain
 }
 
 func (m *MarkdownConverter) Convert(src *HTMLDocument) (*MarkdownDocument, error) {
@@ -94,7 +95,9 @@ func WithPreprocessors(p ...HTMLPreprocessor) MarkdownConverterConfigFunc {
 func NewMarkdownConverter(configs ...MarkdownConverterConfigFunc) *MarkdownConverter {
 	m := &MarkdownConverter{
 		Preprocessors: make([]HTMLPreprocessor, 0),
-		errs:          NewErrorBuilder(WithPrefix("MarkdownConverter")),
+		errs: report.NewChain(
+			report.WithPrefix("MarkdownConverter"),
+		),
 	}
 
 	for _, configure := range configs {

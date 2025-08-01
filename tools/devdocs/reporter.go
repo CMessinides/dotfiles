@@ -9,6 +9,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/cmessinides/dotfiles/tools/devdocs/internal/report"
 	"github.com/fatih/color"
 )
 
@@ -18,45 +19,28 @@ type Reporter interface {
 	ReportError(err error)
 }
 
-func fmtBold(a ...any) string {
-	return color.New(color.Bold).Sprint(a...)
+type colorMap struct {
+	bold       *color.Color
+	dim        *color.Color
+	error      *color.Color
+	warning    *color.Color
+	arg        *color.Color
+	cmd        *color.Color
+	stackLabel *color.Color
 }
 
-func fmtDim(a ...any) string {
-	return color.New(color.Faint).Sprint(a...)
+var colors = colorMap{
+	bold:       color.New(color.Bold),
+	dim:        color.New(color.Faint),
+	error:      color.New(color.FgRed, color.Bold),
+	warning:    color.New(color.FgYellow, color.Bold),
+	arg:        color.New(color.FgGreen),
+	cmd:        color.New(color.FgCyan, color.Bold),
+	stackLabel: color.New(color.FgBlue),
 }
 
-func fmtError(a ...any) string {
-	return color.New(color.FgRed, color.Bold).Sprint(a...)
-}
-
-func fmtWarning(a ...any) string {
-	return color.New(color.FgYellow, color.Bold).Sprint(a...)
-}
-
-func fmtQuote(a string) string {
+func quote(a string) string {
 	return fmt.Sprintf(`"%s"`, a)
-}
-
-func fmtArg(a ...any) string {
-	s := color.New(color.FgYellow).Sprint(a...)
-	if color.NoColor {
-		s = fmtQuote(s)
-	}
-
-	return s
-}
-
-func fmtDocset(a ...any) string {
-	return color.New(color.FgMagenta).Sprint(a...)
-}
-
-func fmtEntry(a ...any) string {
-	return color.New(color.FgBlue).Sprint(a...)
-}
-
-func fmtCmd(a ...any) string {
-	return color.New(color.FgCyan, color.Bold).Sprint(a...)
 }
 
 func indent(count int, text string) string {
@@ -73,15 +57,8 @@ func indent(count int, text string) string {
 func inspect(err error) string {
 	s := new(strings.Builder)
 
-	var l LabeledError
-	for err != nil {
-		if errors.As(err, &l) {
-			fmt.Fprintf(s, "%s: %s\n", l.Label(), l.Body())
-		} else {
-			fmt.Fprintf(s, "<err>: %s\n", err.Error())
-		}
-
-		err = errors.Unwrap(err)
+	for h, b := range report.Stack(err) {
+		fmt.Fprintf(s, "%s: %s\n", colors.stackLabel.Sprint(h), b)
 	}
 
 	return s.String()
@@ -91,15 +68,13 @@ func inspect(err error) string {
 var tmplFS embed.FS
 
 var funcMap = template.FuncMap{
-	"cmd":     fmtCmd,
-	"arg":     fmtArg,
-	"docset":  fmtDocset,
-	"entry":   fmtEntry,
-	"error":   fmtError,
-	"warning": fmtWarning,
-	"bold":    fmtBold,
-	"dim":     fmtDim,
-	"quote":   fmtQuote,
+	"cmd":     colors.cmd.Sprint,
+	"arg":     colors.arg.Sprint,
+	"error":   colors.error.Sprint,
+	"warning": colors.warning.Sprint,
+	"bold":    colors.bold.Sprint,
+	"dim":     colors.dim.Sprint,
+	"quote":   quote,
 	"indent":  indent,
 	"inspect": inspect,
 }

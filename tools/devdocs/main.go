@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/alecthomas/kong"
+	"github.com/cmessinides/dotfiles/tools/devdocs/internal/report"
 	"golang.org/x/term"
 )
 
@@ -109,9 +110,9 @@ func main() {
 			reporter.Verbose = cli.Verbose
 		}
 
-		var l LabeledError
-		if errors.As(err, &l) {
-			reporter.ReportError(l)
+		var r report.Err
+		if errors.As(err, &r) {
+			reporter.ReportError(r)
 		} else {
 			reporter.ReportError(err)
 		}
