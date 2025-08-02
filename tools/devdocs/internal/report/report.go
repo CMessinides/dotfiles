@@ -242,8 +242,22 @@ func (r *reportError) Unwrap() error {
 	return r.inner
 }
 
+// Newer is the interface that wraps the `New()` method for creating an [Err].
+type Newer interface {
+	// New constructs an [Err] with the given body.
+	New(body string) Err
+}
+
+// Wrapper is the interface that wraps the `Wrap()` method for creating an
+// [Err] that wraps another error.
+type Wrapper interface {
+	// Wrap constructs an [Err] with the given body and wraps it around the
+	// given error.
+	Wrap(body string, err error) Err
+}
+
 // A Chain is a sequence of middleware that can be applied repeatedly to create
-// new [Err]s that have similar structures.
+// new errors that have similar structures.
 type Chain struct {
 	head Middleware
 }
@@ -260,14 +274,14 @@ func NewChain(middleware ...Middleware) *Chain {
 	return chain
 }
 
-// New constructs an [Err] with the given body, then applies the chain of
-// middleware to the new error and returns it.
+// New implements the [Newer] interface. After the [Err] is created, the chain
+// of middleware is applied to it.
 func (c *Chain) New(body string) Err {
 	return c.Wrap(body, nil)
 }
 
-// Wrap constructs an [Err] with the given body and inner error, then applies
-// the chain of middleware to the new error and returns it.
+// Wrap implements the [Wrapper] interface. After the [Err] is created, the
+// chain of middleware is applied to it.
 func (c *Chain) Wrap(body string, err error) Err {
 	b := NewErrorBuilder(body)
 

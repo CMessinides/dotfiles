@@ -9,6 +9,8 @@ import (
 	"log/slog"
 	"strconv"
 	"strings"
+
+	"github.com/cmessinides/dotfiles/tools/devdocs/internal/report"
 )
 
 type DocumentContent []byte
@@ -41,12 +43,14 @@ type DocumentSection struct {
 type DocumentIndex struct {
 	IDs    []string
 	Ranges map[string]LineRange
+	errs   *report.Chain
 }
 
 func NewDocumentIndex(sections []*DocumentSection) *DocumentIndex {
 	idx := &DocumentIndex{
 		IDs:    make([]string, 0, len(sections)),
 		Ranges: make(map[string]LineRange),
+		errs:   report.NewChain(report.WithPrefix("DocumentIndex")),
 	}
 
 	for _, s := range sections {
@@ -62,8 +66,8 @@ func NewDocumentIndex(sections []*DocumentSection) *DocumentIndex {
 }
 
 func BuildDocumentIndex(md []byte, ids []string) (*DocumentIndex, error) {
-	errs := NewErrorBuilder(
-		WithFunctionLabel("BuildDocumentIndex", md, ids),
+	errs := report.NewChain(
+		report.WithFunctionLabel("BuildDocumentIndex", md, ids),
 	)
 	sections := make([]*DocumentSection, 0, len(ids))
 	scanner := bufio.NewScanner(bytes.NewReader(md))
@@ -158,27 +162,61 @@ func (d *DocumentIndex) Get(id string) (lines *LineRange, ok bool) {
 	return lines, ok
 }
 
-// MarshalText implements the MarshalText method of the [Index] interface.
+// MarshalText implements the [encoding.TextMarshaler] interface.
 func (d *DocumentIndex) MarshalText() (text []byte, err error) {
+	errs := d.errs.Extend(report.WithMethodLabel("MarshalText"))
 	buf := new(bytes.Buffer)
 
-	for _, id := range d.IDs {
-		l := d.Ranges[id]
-		fmt.Fprintf(buf, "%d:%d %s\n", l.Start, l.End, id)
+	_, err = d.WriteTo(buf)
+	if err != nil {
+		return nil, errs.Wrap("failed to write index", err)
 	}
 
 	return buf.Bytes(), nil
 }
 
-// UnmarshalText implements the UnmarshalText method of the [Index] interface.
+// WriteTo implements the [io.WriterTo] interface.
+func (d *DocumentIndex) WriteTo(w io.Writer) (n int64, err error) {
+	errs := d.errs.Extend(report.WithMethodLabel("WriteTo", w))
+
+	for i, id := range d.IDs {
+		l := d.Ranges[id]
+		ln, err := fmt.Fprintf(w, "%d:%d %s\n", l.Start, l.End, id)
+		if err != nil {
+			return n, errs.Wrap(
+				fmt.Sprintf("failed to write section %q (line %d)", id, i),
+				err,
+			)
+		}
+
+		n += int64(ln)
+	}
+
+	return n, nil
+}
+
+// UnmarshalText implements the [encoding.TextUnmarshaler] interface.
 func (d *DocumentIndex) UnmarshalText(text []byte) error {
+	errs := d.errs.Extend(report.WithMethodLabel("UnmarshalText", text))
+	_, err := d.ReadFrom(bytes.NewReader(text))
+	if err != nil {
+		return errs.Wrap("failed to read index", err)
+	}
+
+	return nil
+}
+
+// ReadFrom implements the [io.ReaderFrom] interface.
+func (d *DocumentIndex) ReadFrom(r io.Reader) (n int64, err error) {
+	errs := d.errs.Extend(report.WithMethodLabel("ReadFrom", r))
 	ids := make([]string, 0)
 	ranges := make(map[string]LineRange)
-	scanner := bufio.NewScanner(bytes.NewReader(text))
+	scanner := bufio.NewScanner(r)
 
-	var n int
+	var l int
 	for scanner.Scan() {
-		n++
+		l++
+		n += int64(len(scanner.Bytes()) + 1)
 		line := scanner.Text()
 
 		// Skip blank lines.
@@ -188,22 +226,22 @@ func (d *DocumentIndex) UnmarshalText(text []byte) error {
 
 		rawRange, id, ok := strings.Cut(line, " ")
 		if !ok {
-			return NewErrBadIndexFormat(n, "no space after range (expected format <start>:<end> <id>)")
+			return 0, NewBadIndexFormatError(errs, l, "no space after range (expected format <start>:<end> <id>)")
 		}
 
 		rawStart, rawEnd, ok := strings.Cut(rawRange, ":")
 		if !ok {
-			return NewErrBadIndexFormat(n, "bad range syntax (expected format <start>:<end>)")
+			return 0, NewBadIndexFormatError(errs, l, "bad range syntax (expected format <start>:<end>)")
 		}
 
 		start, err := strconv.Atoi(rawStart)
 		if err != nil {
-			return NewErrBadIndexFormat(n, "bad range syntax: <start> must be a number")
+			return 0, NewBadIndexFormatError(errs, l, "bad range syntax: <start> must be a number")
 		}
 
 		end, err := strconv.Atoi(rawEnd)
 		if err != nil {
-			return NewErrBadIndexFormat(n, "bad range syntax : <end> must be a number")
+			return 0, NewBadIndexFormatError(errs, l, "bad range syntax : <end> must be a number")
 		}
 
 		ids = append(ids, id)
@@ -214,13 +252,13 @@ func (d *DocumentIndex) UnmarshalText(text []byte) error {
 	}
 
 	if err := scanner.Err(); err != nil {
-		return err
+		return 0, errs.Wrap("failed to scan from reader", err)
 	}
 
 	d.IDs = ids
 	d.Ranges = ranges
 
-	return nil
+	return n, err
 }
 
 func (d *DocumentIndex) Count() int {

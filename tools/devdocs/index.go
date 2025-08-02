@@ -3,6 +3,8 @@ package main
 import (
 	"encoding"
 	"fmt"
+
+	"github.com/cmessinides/dotfiles/tools/devdocs/internal/report"
 )
 
 // Index is a serializable data structure that facilitates fast lookups with
@@ -15,17 +17,15 @@ type Index[T any] interface {
 }
 
 type ErrBadIndexFormat struct {
+	report.Err
 	Line int
-	msg  string
 }
 
-func NewErrBadIndexFormat(line int, msg string) *ErrBadIndexFormat {
+func NewBadIndexFormatError(r report.Newer, line int, msg string) *ErrBadIndexFormat {
 	return &ErrBadIndexFormat{
+		Err: r.New(
+			fmt.Sprintf("failed to parse index line %d: %s", line, msg),
+		),
 		Line: line,
-		msg:  msg,
 	}
-}
-
-func (e *ErrBadIndexFormat) Error() string {
-	return fmt.Sprintf("failed to parse index line %d: %s", e.Line, e.msg)
 }

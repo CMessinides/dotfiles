@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io"
 	"strings"
+
+	"github.com/cmessinides/dotfiles/tools/devdocs/internal/report"
 )
 
 // Entry represents a documentation entry retrieved from the DevDocs API.
@@ -26,12 +28,14 @@ type EntryManifest struct {
 type EntryIndex struct {
 	paths   []string
 	entries map[string]*Entry
+	errs    *report.Chain
 }
 
 func NewEntryIndex(entries []Entry) *EntryIndex {
 	idx := &EntryIndex{
 		paths:   make([]string, len(entries)),
 		entries: make(map[string]*Entry),
+		errs:    report.NewChain(report.WithPrefix("EntryIndex")),
 	}
 
 	for i, e := range entries {
@@ -66,8 +70,9 @@ func (e *EntryIndex) Get(path string) (entry *Entry, ok bool) {
 	return entry, ok
 }
 
-// MarshalText implements the MarshalText method of the [Index] interface.
+// MarshalText implements the [encoding.TextMarshaler] interface.
 func (e *EntryIndex) MarshalText() (text []byte, err error) {
+	// errs := e.errs.Extend(report.WithMethodLabel("MarshalText"))
 	buf := new(bytes.Buffer)
 
 	for _, entry := range e.entries {
@@ -77,14 +82,48 @@ func (e *EntryIndex) MarshalText() (text []byte, err error) {
 	return buf.Bytes(), nil
 }
 
-// UnmarshalText implements the UnmarshalText method of the [Index] interface.
-func (e *EntryIndex) UnmarshalText(text []byte) error {
-	entries := make(map[string]*Entry)
-	scanner := bufio.NewScanner(bytes.NewReader(text))
+// WriteTo implements the [io.WriterTo] interface.
+func (e *EntryIndex) WriteTo(w io.Writer) (n int64, err error) {
+	errs := e.errs.Extend(report.WithMethodLabel("WriteTo", w))
 
-	var n int
+	var i int
+	for _, entry := range e.entries {
+		ln, err := fmt.Fprintf(w, "%s\t%s\t%s\n", entry.Path, entry.Type, entry.Name)
+		if err != nil {
+			return n, errs.Wrap(
+				fmt.Sprintf("failed to write entry %q (line %d)", entry.Path, i),
+				err,
+			)
+		}
+
+		i++
+		n += int64(ln)
+	}
+
+	return n, nil
+}
+
+// UnmarshalText implements the [encoding.TextUnmarshaler] interface.
+func (e *EntryIndex) UnmarshalText(text []byte) error {
+	errs := e.errs.Extend(report.WithMethodLabel("UnmarshalText", text))
+	_, err := e.ReadFrom(bytes.NewReader(text))
+	if err != nil {
+		return errs.Wrap("failed to read index", err)
+	}
+
+	return nil
+}
+
+// ReadFrom implements the [io.ReaderFrom] interface.
+func (e *EntryIndex) ReadFrom(r io.Reader) (n int64, err error) {
+	errs := e.errs.Extend(report.WithMethodLabel("ReadFrom", r))
+	entries := make(map[string]*Entry)
+	scanner := bufio.NewScanner(r)
+
+	var l int
 	for scanner.Scan() {
-		n++
+		l++
+		n += int64(len(scanner.Bytes()) + 1)
 		line := scanner.Text()
 
 		// Skip blank lines.
@@ -94,17 +133,17 @@ func (e *EntryIndex) UnmarshalText(text []byte) error {
 
 		parts := strings.SplitN(line, "\t", 3)
 		if len(parts) < 3 {
-			return NewErrBadIndexFormat(n, "not enough values (expected format <path>\\t<type>\\t<name>)")
+			return 0, NewBadIndexFormatError(errs, l, "not enough values (expected format <path>\\t<type>\\t<name>)")
 		}
 
 		path := parts[0]
 		if path == "" {
-			return NewErrBadIndexFormat(n, "path cannot be blank")
+			return 0, NewBadIndexFormatError(errs, l, "path cannot be blank")
 		}
 
 		name := parts[2]
 		if name == "" {
-			return NewErrBadIndexFormat(n, "name cannot be blank")
+			return 0, NewBadIndexFormatError(errs, l, "name cannot be blank")
 		}
 
 		entries[path] = &Entry{
@@ -115,12 +154,12 @@ func (e *EntryIndex) UnmarshalText(text []byte) error {
 	}
 
 	if err := scanner.Err(); err != nil {
-		return err
+		return 0, errs.Wrap("failed to scan from reader", err)
 	}
 
 	e.entries = entries
 
-	return nil
+	return n, nil
 }
 
 // EntryLocator encodes how to locate an entry from DevDocs, with the
