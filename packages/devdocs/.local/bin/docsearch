@@ -3,15 +3,21 @@
 set -e
 set -o pipefail
 
-TAB="$(printf '\t')"
-FZF_ARGS=( "-d" "$TAB" "--reverse" )
+FZF_ARGS=( "-d" $'\t' "--reverse" )
 
-_pick-docset() {
-    devdocs docsets list --porcelain | fzf "${FZF_ARGS[@]}" --with-nth 1 | cut -d "$TAB" -f 2
+search-docsets() {
+    devdocs docsets list --porcelain | fzf \
+        "${FZF_ARGS[@]}" \
+        --with-nth 1 \
+        --bind "enter:execute(docsearch {2})"
 }
 
-_pick-entry() {
-    devdocs entries list "$1" --porcelain | fzf "${FZF_ARGS[@]}" --with-nth 3 | cut -d "$TAB" -f 1
+search-entries() {
+    local docset=$1
+    devdocs entries list "$docset" --porcelain | fzf \
+        "${FZF_ARGS[@]}" \
+        --with-nth 3 \
+        --bind "enter:execute(devdocs entries show '$docset' {1})"
 }
 
 case "$1" in
@@ -29,11 +35,7 @@ esac
 docset="$1"
 
 if [ -z "$docset" ]; then
-    docset="$(_pick-docset)"
+    search-docsets
+else
+    search-entries "$docset"
 fi
-
-entry="$(_pick-entry "$docset")"
-
-clear
-
-devdocs entries show "$docset" "$entry"
