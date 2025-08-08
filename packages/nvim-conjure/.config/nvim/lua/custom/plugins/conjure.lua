@@ -33,6 +33,9 @@ return {
 
             -- Disable the documentation mapping
             vim.g["conjure#mapping#doc_word"] = false
+
+            -- Use the stdio client for fennel
+            vim.g["conjure#filetype#fennel"] = "conjure.client.fennel.stdio"
         end,
     },
 
