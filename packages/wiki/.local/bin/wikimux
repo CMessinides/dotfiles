@@ -1,0 +1,99 @@
+#!/bin/bash
+
+set -e
+set -o pipefail
+
+WIKI_DIR="${WIKI_DIR:-$HOME/wiki}"
+RUNTIME_DIR="${XDG_RUNTIME_DIR:-/tmp}/wikimux"
+
+if [ ! -d "$WIKI_DIR" ]; then
+    echo "Creating wiki root at $WIKI_DIR..." >&2
+    mkdir -p "$WIKI_DIR"
+fi
+
+if [ ! -d "$RUNTIME_DIR" ]; then
+    mkdir -p "$RUNTIME_DIR"
+fi
+
+SESSION_NAME="wikimux"
+WINDOW_NAME="main"
+
+FINDER_PANE="$SESSION_NAME:$WINDOW_NAME.0"
+EDITOR_PANE="$SESSION_NAME:$WINDOW_NAME.1"
+
+has-session() {
+    tmux has-session -t "$1" 2>/dev/null
+}
+
+send-editor-command() {
+    local cmd="$@"
+
+    if [ -z "$NVIM_ADDR"] || [ ! -S "$NVIM_ADDR" ]; then
+        echo "could not find socket for wikimux neovim instance; is wikimux running?" >&2
+        return 1
+    fi
+
+    nvim --server "$NVIM_ADDR" --remote-send "<C-\><C-N>$cmd<CR>"
+}
+
+open-note() {
+    send-editor-command ":e $@"
+}
+
+open-note-split() {
+    send-editor-command ":sp $@"
+}
+
+open-note-vsplit() {
+    send-editor-command ":vs $@"
+}
+
+focus-editor() {
+    tmux select-pane -t "$EDITOR_PANE"
+}
+
+list-notes() {
+    find "$WIKI_DIR" -type f -name '*.md' -printf '%P\n'
+}
+
+finder() {
+    wikimux list-notes | \
+        fzf --scheme=path \
+            --reverse \
+            --border=none \
+            --header="All Notes" \
+            --bind "esc:clear-query" \
+            --bind "enter:execute-silent(wikimux open-note {})+execute-silent(wikimux focus-editor)" \
+            --bind "ctrl-h:execute-silent(wikimux open-note-split {})+execute-silent(wikimux focus-editor)" \
+            --bind "ctrl-v:execute-silent(wikimux open-note-vsplit {})+execute-silent(wikimux focus-editor)" \
+            --bind "ctrl-r:reload(wikimux list-notes)"
+}
+
+create-and-attach() {
+    if ! has-session "$SESSION_NAME"; then
+        NVIM_ADDR="$RUNTIME_DIR/nvim.$RANDOM.pipe"
+        tmux new-session -d \
+            -s "$SESSION_NAME" \
+            -n "$WINDOW_NAME" \
+            -c "$WIKI_DIR" \
+            -e "NVIM_ADDR=$NVIM_ADDR" \
+            "wikimux finder"
+
+        tmux split-window -h -t "$SESSION_NAME:$WINDOW_NAME" -c "$WIKI_DIR" "nvim --listen '$NVIM_ADDR'"
+
+        tmux resize-pane -t "$FINDER_PANE" -x "33%"
+        tmux select-pane -t "$FINDER_PANE"
+    fi
+
+    if [ -z "$TMUX" ]; then
+        tmux attach -t "$SESSION_NAME"
+    else
+        tmux switch-client -t "$SESSION_NAME"
+    fi
+}
+
+if [ "$#" -eq 0 ]; then
+    create-and-attach
+else
+    $@
+fi
