@@ -244,7 +244,7 @@ require("lazy").setup({
     --       These are some example plugins that I've included in the kickstart repository.
     --       Uncomment any of the lines below to enable them.
     -- require 'kickstart.plugins.autoformat',
-    -- require 'kickstart.plugins.debug',
+    require("kickstart.plugins.debug"),
 
     -- NOTE: The import below can automatically add your own plugins, configuration, etc from `lua/custom/plugins/*.lua`
     --    You can use this folder to prevent any conflicts with this init.lua if you're interested in keeping
@@ -555,22 +555,26 @@ capabilities = require("cmp_nvim_lsp").default_capabilities(capabilities)
 -- Ensure the servers above are installed
 local mason_lspconfig = require("mason-lspconfig")
 
+vim.lsp.config("*", {
+    on_attach = on_attach,
+    capabilities = capabilities,
+})
+
 mason_lspconfig.setup({
+    automatic_enable = true,
     ensure_installed = vim.tbl_keys(servers),
 })
 
-mason_lspconfig.setup_handlers({
-    function(server_name)
-        require("lspconfig")[server_name].setup({
-            capabilities = capabilities,
-            on_attach = on_attach,
-            settings = (servers[server_name] or {}).settings,
-            filetypes = (servers[server_name] or {}).filetypes,
-            root_dir = (servers[server_name] or {}).root_dir,
-            single_file_support = (servers[server_name] or {}).single_file_support,
-        })
-    end,
-})
+for server_name, server in pairs(servers) do
+    require("lspconfig")[server_name].setup({
+        capabilities = capabilities,
+        on_attach = on_attach,
+        settings = server.settings,
+        filetypes = server.filetypes,
+        root_dir = server.root_dir,
+        single_file_support = server.single_file_support,
+    })
+end
 
 -- [[ Configure nvim-cmp ]]
 -- See `:help cmp`
