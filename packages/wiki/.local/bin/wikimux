@@ -19,7 +19,8 @@ SESSION_NAME="wikimux"
 WINDOW_NAME="main"
 
 FINDER_PANE="$SESSION_NAME:$WINDOW_NAME.0"
-EDITOR_PANE="$SESSION_NAME:$WINDOW_NAME.1"
+HEADING_FINDER_PANE="$SESSION_NAME:$WINDOW_NAME.1"
+EDITOR_PANE="$SESSION_NAME:$WINDOW_NAME.2"
 
 has-session() {
     tmux has-session -t "$1" 2>/dev/null
@@ -48,12 +49,41 @@ open-note-vsplit() {
     send-editor-command ":vs $@"
 }
 
+open-heading() {
+    local line="$1"
+    local filename="${@:2}"
+    send-editor-command ":e $filename|$line"
+}
+
+open-heading-split() {
+    local line="$1"
+    local filename="${@:2}"
+    send-editor-command ":sp $filename|$line"
+}
+
+open-heading-vsplit() {
+    local line="$1"
+    local filename="${@:2}"
+    send-editor-command ":vs $filename|$line"
+}
+
 focus-editor() {
     tmux select-pane -t "$EDITOR_PANE"
 }
 
 list-notes() {
     find "$WIKI_DIR" -type f -name '*.md' -printf '%P\n'
+}
+
+list-headings() {
+    local IFS=$'\n'
+    for file in $(wikimux list-notes)
+    do
+        for match in $(grep -n '^#' "$WIKI_DIR/$file" | sed 's/^\([0-9]\+\):#\+ *\(.*\)/\2\t\1/')
+        do
+            echo "$match"$'\t'"$file"
+        done
+    done
 }
 
 finder() {
@@ -69,6 +99,22 @@ finder() {
             --bind "ctrl-r:reload(wikimux list-notes)"
 }
 
+heading-finder() {
+    wikimux list-headings | \
+        fzf -d $'\t' \
+            --with-nth "{1} ({3})" \
+            --nth '1' \
+            --reverse \
+            --border=none \
+            --header="All Headings" \
+            --bind "esc:clear-query" \
+            --bind "enter:execute-silent(wikimux open-heading {2} {3})+execute-silent(wikimux focus-editor)" \
+            --bind "ctrl-h:execute-silent(wikimux open-heading-split {2} {3})+execute-silent(wikimux focus-editor)" \
+            --bind "ctrl-v:execute-silent(wikimux open-heading-vsplit {2} {3})+execute-silent(wikimux focus-editor)" \
+            --bind "ctrl-r:reload(wikimux list-notes)"
+
+}
+
 create-and-attach() {
     if ! has-session "$SESSION_NAME"; then
         NVIM_ADDR="$RUNTIME_DIR/nvim.$RANDOM.pipe"
@@ -79,9 +125,12 @@ create-and-attach() {
             -e "NVIM_ADDR=$NVIM_ADDR" \
             "wikimux finder"
 
-        tmux split-window -h -t "$SESSION_NAME:$WINDOW_NAME" -c "$WIKI_DIR" "nvim --listen '$NVIM_ADDR'"
+        tmux split-window -v -t "$FINDER_PANE" -c "$WIKI_DIR" "wikimux heading-finder"
+        tmux resize-pane -t "$HEADING_FINDER_PANE" -y "25%"
 
-        tmux resize-pane -t "$FINDER_PANE" -x "33%"
+        tmux split-window -hf -t "$SESSION_NAME:$WINDOW_NAME" -c "$WIKI_DIR" "nvim --listen '$NVIM_ADDR'"
+        tmux resize-pane -t "$EDITOR_PANE" -x "67%"
+
         tmux select-pane -t "$FINDER_PANE"
     fi
 
