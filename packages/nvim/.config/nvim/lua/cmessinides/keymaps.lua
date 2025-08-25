@@ -18,9 +18,8 @@ vim.keymap.set("n", "k", "v:count == 0 ? 'gk' : 'k'", { expr = true, silent = tr
 vim.keymap.set("n", "j", "v:count == 0 ? 'gj' : 'j'", { expr = true, silent = true })
 
 -- Remap the default tab* keymaps (conflict with iTerm2)
-vim.keymap.set("n", "<Leader>tc", vim.cmd.tabnew, { desc = "[C]reate [T]ab" })
-vim.keymap.set("n", "<Leader>tn", vim.cmd.tabnext, { desc = "[N]ext [T]ab" })
-vim.keymap.set("n", "<Leader>tp", vim.cmd.tabprev, { desc = "[P]rev [T]ab" })
+vim.keymap.set("n", "<Leader><Tab>", vim.cmd.tabnext, { desc = "Next Tab" })
+vim.keymap.set("n", "<Leader><S-Tab>", vim.cmd.tabprev, { desc = "Prev Tab" })
 
 -- Add keymaps for buffer commands
 vim.keymap.set("n", "<Leader>bd", vim.cmd.bd, { desc = "[B]uffer [D]elete" })

@@ -483,7 +483,7 @@ wk.add({
     { "<leader>r_", hidden = true },
     { "<leader>s", group = "[S]earch" },
     { "<leader>s_", hidden = true },
-    { "<leader>t", group = "[T]ab" },
+    { "<leader>t", group = "[T]ests" },
     { "<leader>t_", hidden = true },
     { "<leader>u", group = "[U]I" },
     { "<leader>u_", hidden = true },
@@ -517,9 +517,10 @@ local servers = {
         root_dir = require("lspconfig").util.root_pattern("package.json"),
         single_file_support = false,
     },
-    denols = {
-        root_dir = require("lspconfig").util.root_pattern("deno.json", "deno.jsonc"),
-    },
+    -- TODO: Figure out how to prevent this from running alongside ts_ls.
+    -- denols = {
+    --     root_dir = require("lspconfig").util.root_pattern("deno.json", "deno.jsonc"),
+    -- },
     -- html = { filetypes = { 'html', 'twig', 'hbs'} },
 
     lua_ls = {
