@@ -1,0 +1,430 @@
+#!/usr/bin/env -S deno run --allow-read --allow-write --allow-env
+
+import * as collections from "jsr:@std/collections";
+import * as frontMatter from "jsr:@std/front-matter";
+import * as fs from "jsr:@std/fs";
+import * as path from "jsr:@std/path";
+import * as toml from "jsr:@std/toml";
+import * as ulid from "jsr:@std/ulid";
+import { Command } from "jsr:@cliffy/command@1.0.0-rc.8";
+import { colors } from "jsr:@cliffy/ansi@1.0.0-rc.8/colors";
+import * as z from "jsr:@zod/zod";
+
+/* ========================================================================== *
+   Constants
+ * ========================================================================== */
+
+// Common strings
+const NB = "nb";
+
+// User preferences
+const COLOR = !Deno.env.has("NO_COLOR");
+
+// User paths
+const HOME = Deno.env.get("HOME") ||
+  logFatal("cannot determine user home dir; make sure HOME is set");
+const XDG_CONFIG_HOME = Deno.env.get("XDG_CONFIG_HOME") ||
+  path.join(HOME, ".config");
+const NB_CONFIG_HOME = path.join(XDG_CONFIG_HOME, NB);
+
+/* ========================================================================== *
+   Formatting helpers
+ * ========================================================================== */
+
+type Colorizer = (str: string) => string;
+const noStyle: Colorizer = (str) => str;
+const Styles = {
+  cyan: COLOR ? colors.bold.cyan : noStyle,
+  red: COLOR ? colors.bold.red : noStyle,
+  yellow: COLOR ? colors.bold.yellow : noStyle,
+  green: COLOR ? colors.bold.green : noStyle,
+} as const satisfies Record<string, Colorizer>;
+
+function stringf(template: string, ...values: unknown[]): string {
+  return template.replaceAll(/%s(?:\[(\w+)\])?/g, (_, style) => {
+    const value = values.shift();
+    const fmt = (style && Styles[style as keyof typeof Styles]) ?? noStyle;
+    return fmt(`${value}`);
+  });
+}
+
+/* ========================================================================== *
+   Logging helpers
+ * ========================================================================== */
+
+function logError(error: unknown) {
+  console.error(
+    stringf(
+      "%s[red]: %s",
+      "error",
+      error instanceof Error ? error.message : error,
+    ),
+  );
+}
+
+function logFatal(error: unknown): never {
+  logError(error);
+  Deno.exit(1);
+}
+
+function printf(template: string, ...values: unknown[]) {
+  console.log(stringf(template, ...values));
+}
+
+/* ========================================================================== *
+   Notebook
+ * ========================================================================== */
+
+interface Notebook {
+  root: string;
+}
+
+function getPrivatePath(notebook: Notebook): string {
+  return path.join(notebook.root, ".nb");
+}
+
+function getConfigPath(notebook: Notebook): string {
+  return path.join(getPrivatePath(notebook), "config.toml");
+}
+
+function getCachePath(notebook: Notebook): string {
+  return path.join(getPrivatePath(notebook), "cache");
+}
+
+function getDataPath(notebook: Notebook): string {
+  return path.join(getPrivatePath(notebook), "data");
+}
+
+function getTemplatePath(notebook: Notebook): string {
+  return path.join(getPrivatePath(notebook), "template");
+}
+
+async function notebookExists(notebook: Notebook): Promise<boolean> {
+  try {
+    const { isDirectory } = await Deno.stat(getPrivatePath(notebook));
+    return isDirectory;
+  } catch {
+    return false;
+  }
+}
+
+function isNotebookRoot(dir: string): Promise<boolean> {
+  return notebookExists({ root: dir });
+}
+
+async function findCurrentNotebook(): Promise<Notebook | null> {
+  let dir = Deno.cwd();
+
+  do {
+    if (await isNotebookRoot(dir)) {
+      return { root: dir };
+    } else {
+      dir = path.dirname(dir);
+    }
+  } while (dir !== "/");
+
+  return null;
+}
+
+class NotebookAlreadyExistsError extends Error {
+  notebook: Notebook;
+
+  constructor(notebook: Notebook) {
+    super(stringf("notebook already exists at %s[cyan]", notebook.root));
+    this.notebook = notebook;
+  }
+}
+
+async function initNotebook(root: string): Promise<Notebook> {
+  const notebook: Notebook = { root };
+  if (await notebookExists(notebook)) {
+    throw new NotebookAlreadyExistsError(notebook);
+  }
+
+  await Deno.mkdir(getPrivatePath(notebook));
+  await Promise.all([
+    fs.ensureDir(getCachePath(notebook)),
+    fs.ensureDir(getDataPath(notebook)),
+    fs.ensureDir(getTemplatePath(notebook)),
+    fs.ensureFile(getConfigPath(notebook)),
+  ]);
+
+  return notebook;
+}
+
+class NotInNotebookError extends Error {
+  path: string;
+
+  constructor(path: string) {
+    super(stringf("%s[cyan] is not in a notebook", path));
+    this.path = path;
+  }
+}
+
+async function ensureInNotebook(): Promise<Notebook> {
+  const notebook = await findCurrentNotebook();
+
+  if (!notebook) {
+    throw new NotInNotebookError(Deno.cwd());
+  }
+
+  return notebook;
+}
+
+/* ========================================================================== *
+   Note
+ * ========================================================================== */
+
+interface Note {
+  filename: string;
+  title: string;
+  tags: string[];
+  date: Date;
+}
+
+function generateID(timestamp: Date) {
+  return ulid.ulid(+timestamp).toLowerCase();
+}
+
+function slugify(title: string): string {
+    return title.replaceAll(/[^A-z0-9 _-]+/g, "").replaceAll(" ", "-").toLowerCase();
+}
+
+function stringifyDate(date: Date): string {
+    return date.toISOString().split('T')[0]
+}
+
+function createNoteFilename(template: string, title: string, timestamp: Date): string {
+   return template.replaceAll(/\{(id|slug|title|date)\}/g, (_, param: 'id' | 'slug' | 'title' | 'date') => {
+        switch (param) {
+            case 'id':
+                return generateID(timestamp)
+            case 'title':
+                return title
+            case 'slug':
+                return slugify(title)
+            case 'date':
+                return stringifyDate(timestamp)
+        }
+    })
+}
+
+class NoteAlreadyExistsError extends Error {
+    filename: string
+    notebook: Notebook
+
+    constructor(filename: string, notebook: Notebook) {
+        super(stringf("a note already exists at %s[cyan] in the current notebook"))
+        this.filename = filename
+        this.notebook = notebook
+    }
+}
+
+interface CreateNoteParameters {
+  title: string;
+  tags?: string[];
+  template?: string;
+}
+
+async function createNote(notebook: Notebook, config: Config, { title, tags = [] }: CreateNoteParameters): Promise<Note> {
+    const date = new Date();
+    const filename = createNoteFilename(config.filename, title, date)
+    const metadata: Omit<Note, 'filename'> = {
+        title,
+        tags,
+        date
+    }
+
+    try {
+        const frontmatter = toml.stringify(metadata).trimEnd()
+        await Deno.writeTextFile(
+            path.join(notebook.root, filename),
+            [
+                "+++",
+                frontmatter,
+                "+++",
+                "",
+                `# ${title}`,
+                "",
+                "",
+            ].join('\n')
+        )
+    } catch (e) {
+        if (e instanceof Deno.errors.AlreadyExists) {
+            throw new NoteAlreadyExistsError(filename, notebook)
+        } else {
+            throw e
+        }
+    }
+
+    return {
+        filename,
+        title,
+        tags,
+        date
+    }
+}
+
+/* ========================================================================== *
+   Config
+ * ========================================================================== */
+
+const Config = z.object({
+  filename: z.string().trim().optional().default("{id}-{slug}.md"),
+});
+
+type Config = z.infer<typeof Config>;
+
+function stringifyObjPath(path: PropertyKey[]): string {
+  return path.reduce((str: string, part) => {
+    switch (typeof part) {
+      case "number":
+        return str + "[" + part + "]";
+      case "symbol":
+        return str + "[" + part.toString() + "]";
+      default:
+        if (str) {
+          return str + "." + part;
+        } else {
+          return "" + part;
+        }
+    }
+  }, "");
+}
+
+class InvalidConfigError extends Error {
+  constructor(path: string, error: z.ZodError) {
+    super(
+      [
+        stringf("invalid config found in %s[cyan]:", path),
+        ...error.issues.map(({ path, message }) => {
+          if (path.length) {
+            return stringf("- %s[yellow]: %s", stringifyObjPath(path), message);
+          } else {
+            return `- ${message}`;
+          }
+        }),
+      ].join("\n"),
+    );
+  }
+}
+
+class ConfigFileNotFoundError extends Error {
+  constructor(path: string) {
+    super(stringf("config file not found at %s[cyan]", path));
+  }
+}
+
+async function loadConfigFile(
+  path: string,
+  { ignoreMissing = false } = {},
+): Promise<Config> {
+  let rawConfig: unknown;
+  try {
+    const content = await Deno.readTextFile(path);
+    rawConfig = toml.parse(content);
+  } catch (e) {
+    if (e instanceof Deno.errors.NotFound) {
+      if (ignoreMissing) {
+        rawConfig = {};
+      } else {
+        throw new ConfigFileNotFoundError(path);
+      }
+    } else {
+      throw e;
+    }
+  }
+
+  try {
+    return Config.parse(rawConfig);
+  } catch (e) {
+    if (e instanceof z.ZodRealError) {
+      throw new InvalidConfigError(path, e);
+    } else {
+      throw e;
+    }
+  }
+}
+
+function loadUserConfig(): Promise<Config> {
+  const configPath = path.join(NB_CONFIG_HOME, "config.toml");
+  return loadConfigFile(configPath, { ignoreMissing: true });
+}
+
+function loadNotebookConfig(notebook: Notebook): Promise<Config> {
+  return loadConfigFile(getConfigPath(notebook));
+}
+
+async function loadConfig(notebook: Notebook): Promise<Config> {
+  const [userConfig, notebookConfig] = await Promise.all([
+    loadUserConfig(),
+    loadNotebookConfig(notebook),
+  ]);
+
+  return collections.deepMerge(userConfig, notebookConfig);
+}
+
+/* ========================================================================== *
+   CLI Commmands
+ * ========================================================================== */
+
+const init = new Command()
+  .description("Initialize a new notebook in the current directory")
+  .action(async () => {
+    const notebook = await initNotebook(Deno.cwd());
+    printf("Initialized notebook in %s[cyan]", notebook.root);
+  });
+
+const create = new Command()
+  .description("create a new note")
+  .option("-t, --title <title:string>", "title of the note", {
+    default: "Untitled",
+  })
+  .option(
+    "-p, --template <name:string>",
+    "template for the initial note content",
+  )
+  .option("--tag <tag:string>", "tag(s) for the note", { collect: true })
+  .action(async (opts) => {
+    const notebook = await ensureInNotebook();
+    const config = await loadConfig(notebook);
+    const note = await createNote(notebook, config, {
+        title: opts.title,
+        tags: opts.tag,
+        template: opts.template
+    })
+
+    console.log(JSON.stringify(note));
+  });
+
+const config = new Command()
+  .description("Print the notebook config")
+  .action(async () => {
+    const notebook = await ensureInNotebook();
+    const config = await loadConfig(notebook);
+    console.log(JSON.stringify(config));
+  });
+
+/* ========================================================================== *
+   CLI Entrypoint
+ * ========================================================================== */
+
+const cli = new Command()
+  .name("nb")
+  .version("0.1.0")
+  .description("manage personal notes in Markdown")
+  .command("init", init)
+  .command("create", create)
+  .command("config", config);
+
+/* ========================================================================== *
+   Run CLI
+ * ========================================================================== */
+
+try {
+  await cli.parse(Deno.args);
+} catch (e) {
+  logFatal(e);
+}
+
+// vim: ft=typescript
