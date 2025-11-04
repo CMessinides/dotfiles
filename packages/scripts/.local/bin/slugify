@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+if [[ $# -gt 0 ]]; then
+    echo -n "$@" | slugify
+else
+    iconv -sc -t ASCII//TRANSLIT \
+        | sed -r s/[^a-zA-Z0-9]+/-/g \
+        | sed -r s/^-+\|-+$//g \
+        | tr A-Z a-z;
+fi

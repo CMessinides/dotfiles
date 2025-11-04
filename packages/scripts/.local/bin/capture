@@ -1,0 +1,211 @@
+#!/usr/bin/env bash
+
+# [cmd]
+# usage: capture [--daily|--weekly|--monthly|--yearly] [--title <title>]
+#                [--from-stdin|--from-clipboard|--from-file <file>]
+#                [--[no-]edit]
+# summary: Capture a quick note
+#
+# Options
+#
+#   -d, --daily               Append the capture to the current daily note.
+#   -w, --weekly              Append the capture to the current weekly note.
+#   -m, --monthly             Append the capture to the current monthly note.
+#   -y, --yearly              Append the capture to the current yearly note.
+#
+#   -t, --title <title>       Set the title for the capture.
+#
+#   -i, --from-stdin          Initialize the capture with the text from stdin.
+#   -x, --from-clipboard      Initialize the capture with the text from the
+#                             clipboard.
+#   -f, --from-file <file>    Initialize the capture with the text from <file>.
+#
+#   --edit                    Open the editor to modify the capture.
+#   --no-edit                 Do not open the editor to modify the note.
+# [/cmd]
+
+NOTE_HOME="${CAPTURE_NOTE_HOME:-"$HOME/notes"}"
+
+list-notes() {
+    find "$NOTE_HOME" -type f -name "*.md" -exec basename {} \; | sed -E 's/\.md$//'
+}
+
+info() {
+    echo "info: $@" >&2
+}
+
+err() {
+    echo "error: $@" >&2
+}
+
+paste_from_clipboard() {
+    if command -v pbpaste &> /dev/null; then
+        # macOS
+        pbpaste
+    elif command -v xclip &> /dev/null; then
+        # Linux (X11)
+        xclip -selection clipboard -o
+    elif command -v wl-paste &> /dev/null; then
+        # Linux (Wayland)
+        wl-paste
+    else
+        err "could not find clipboard utility"
+        return 1
+    fi
+}
+
+SOURCE_NONE=":none:"
+SOURCE_CLIPBOARD=":clipboard:"
+SOURCE_FILE=":file:"
+
+TARGET_DAILY=":daily:"
+TARGET_WEEKLY=":weekly:"
+TARGET_MONTHLY=":monthly:"
+TARGET_YEARLY=":yearly:"
+TARGET_TITLE=":title:"
+
+TITLE=
+SOURCE=$SOURCE_NONE
+FILE=
+TARGET=$TARGET_TITLE
+EDIT=1
+
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --daily | -d)
+            TARGET=$TARGET_DAILY
+            shift
+            ;;
+        --weekly | -w)
+            TARGET=$TARGET_WEEKLY
+            shift
+            ;;
+        --monthly | -m)
+            TARGET=$TARGET_MONTHLY
+            shift
+            ;;
+        --yearly | -y)
+            TARGET=$TARGET_YEARLY
+            shift
+            ;;
+        --title | -t)
+            TARGET=$TARGET_TITLE
+            shift
+            if [[ -z "$1" ]]; then
+                err "title is required"
+                exit 1
+            else
+                TITLE="$1"
+                shift
+            fi
+            ;;
+        --from-clipboard | -x)
+            SOURCE=$SOURCE_CLIPBOARD
+            shift
+            ;;
+        --from-stdin | -i)
+            SOURCE=$SOURCE_FILE
+            FILE=/dev/stdin
+            shift
+            ;;
+        --from-file | -f)
+            SOURCE=$SOURCE_FILE
+            shift
+            if [[ -z "$1" ]]; then
+                err "filename is required"
+                exit 1
+            else
+                FILE="$1"
+                shift
+            fi
+            ;;
+        --edit)
+            EDIT=1
+            shift
+            ;;
+        --no-edit)
+            EDIT=0
+            shift
+            ;;
+    esac
+done
+
+if [[ ! -d "$NOTE_HOME" ]]; then
+    info "Initializing note directory at $NOTE_HOME"
+    mkdir -p "$NOTE_HOME"
+fi
+
+TEMP_DIR="$(mktemp -dt "$(basename "$0").XXXXXXXX")"
+TEMP_FILE="$TEMP_DIR/CAPTURE.md"
+trap 'rm -rf "$TEMP_DIR"' EXIT
+
+TIMESTAMP=
+case "$TARGET" in
+    "$TARGET_DAILY")
+        TITLE="$(date '+%Y-%m-%d')"
+        TIMESTAMP="$(date '+%r')"
+        ;;
+    "$TARGET_WEEKLY")
+        TITLE="$(date '+%Y-w%U')"
+        TIMESTAMP="$(date '+%a, %b %d, %r')"
+        ;;
+    "$TARGET_MONTHLY")
+        TITLE="$(date '+%Y-%m')"
+        TIMESTAMP="$(date '+%a, %b %d %r')"
+        ;;
+    "$TARGET_YEARLY")
+        TITLE="$(date '+%Y')"
+        TIMESTAMP="$(date '+%a, %b %d %r')"
+        ;;
+    "$TARGET_TITLE")
+        if [[ -z "$TITLE" ]]; then
+            TITLE="$(list-notes | fzf --bind 'enter:accept-or-print-query')"
+            if [[ -z "$TITLE" ]]; then
+                err "title is required if one of --daily, --weekly, --monthly, or --yearly is not provided."
+                exit 1
+            fi
+        fi
+        TIMESTAMP="$(date '+%a, %b %d, %Y %r')"
+        ;;
+esac
+
+echo -e "## <$TIMESTAMP>\n" > $TEMP_FILE
+
+case "$SOURCE" in
+    "$SOURCE_CLIPBOARD")
+        if ! paste_from_clipboard >> "$TEMP_FILE"; then
+            err "could not paste from clipboard"
+            exit 1
+        fi
+        ;;
+    "$SOURCE_FILE")
+        if ! cat "$FILE" >> "$TEMP_FILE"; then
+            err "could not create note from file $FILE"
+            exit 1
+        fi
+        ;;
+esac
+
+if [[ $EDIT -ne 0 ]]; then
+    $EDITOR $TEMP_FILE
+fi
+
+if [[ ! -s "$TEMP_FILE" ]]; then
+    info "capture is empty: aborting"
+    exit 0
+fi
+
+
+DEST="$NOTE_HOME/$TITLE.md"
+IS_NEW=1
+
+if [[ -f "$DEST" && -s "$DEST" ]]; then
+    IS_NEW=0
+    echo >> "$DEST" # append blank line
+else
+    echo -e "# $TITLE\n" > "$DEST"
+fi
+
+cat "$TEMP_FILE" >> "$DEST"
+echo "Captured: $DEST$([[ "$IS_NEW" -eq 1 ]] && echo " (new)")"
