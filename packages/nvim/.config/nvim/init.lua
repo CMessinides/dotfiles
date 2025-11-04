@@ -276,6 +276,8 @@ require("lazy").setup({
                 },
                 pyright = {},
 
+                eslint = {},
+
                 ts_ls = {
                     root_dir = function(bufnr, on_dir)
                         local filename = vim.api.nvim_buf_get_name(bufnr)
@@ -302,6 +304,9 @@ require("lazy").setup({
                     root_markers = { "deno.json", "deno.jsonc" },
                 },
 
+                cssls = {},
+                css_variables = {},
+
                 emmet_language_server = {
                     filetypes = {
                         "css",
@@ -318,6 +323,8 @@ require("lazy").setup({
                         "svelte",
                     },
                 },
+
+                svelte = {},
             }
 
             -- Ensure the servers and tools above are installed
