@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+
+# [cmd]
+# usage: notes [capture|edit|list|ls|remove|rm|show]
+# summary: Manage Markdown notes
+# [/cmd]
+
+NOTES_HOME="${NOTES_HOME:-$HOME/notes}"
+
+info() {
+    echo "info: $@" >&2
+}
+
+err() {
+    echo "error: $@" >&2
+}
+
+find_or_create() {
+    fzf --bind 'enter:accept-or-print-query' --bind 'ctrl-n:print-query+abort' "$@"
+}
+
+# [cmd list]
+# usage: notes list
+# summary: List all notes
+# [/cmd]
+list() {
+    find "$NOTES_HOME" -type f -name "*.md" -exec basename {} \; | sed -E 's/\.md$//'
+}
+
+# [cmd edit]
+# usage: notes edit <name>
+# summary: Open the named note in the default editor ($EDITOR)
+#
+# Arguments
+#
+#   <name>    Name of the note to edit (or create, if it doesn't exist)
+# [/cmd]
+edit() {
+    local name="$1"
+    if [[ -z "$name" ]]; then
+        name="$(list | find_or_create --header="Notes")"
+    fi
+
+    if [[ -z "$name" ]]; then
+        err "note name is required"
+        return 1
+    fi
+
+    $EDITOR "$NOTES_HOME/${name}.md"
+}
+
+CMDS=("list" "edit")
+
+CMD=
+if [[ $# -eq 0 ]]; then
+    CMD=echo "${CMDS[@]}" | tr ' ' '\n' | fzf
+else
+    CMD="$1"
+    shift
+fi
+
+"$CMD" "$@"
