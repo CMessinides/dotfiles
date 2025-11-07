@@ -7,6 +7,10 @@ else
     set -gx EDITOR vim
 end
 
+if type -q bat
+    set -gx MANPAGER bat
+end
+
 if status is-interactive
     # Commands to run in interactive sessions can go here
 
