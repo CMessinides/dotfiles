@@ -1,3 +1,5 @@
+set -gx SHELL (command -s fish)
+
 # Set editor to the installed flavor of vim
 if type -q nvim
     set -gx EDITOR nvim
