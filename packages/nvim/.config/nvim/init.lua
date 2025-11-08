@@ -523,11 +523,19 @@ require("lazy").setup({
     },
 
     {
-        "folke/tokyonight.nvim",
+        "rebelot/kanagawa.nvim",
         lazy = false,
         priority = 1000,
         opts = {
-            style = "moon",
+            colors = {
+                theme = {
+                    all = {
+                        ui = {
+                            bg_gutter = "none",
+                        },
+                    },
+                },
+            },
         },
     },
 
@@ -608,7 +616,7 @@ require("lazy").setup({
 require("cmessinides.opts")
 
 -- Set the colorscheme
-vim.cmd.colorscheme("tokyonight")
+vim.cmd.colorscheme("kanagawa")
 
 -- Custom keymaps
 require("cmessinides.keymaps")
