@@ -1,5 +1,6 @@
-[user]
-	name = Cameron Messinides
-	email = cameron.messinides@gmail.com
 [init]
-	defaultBranch = main
+    defaultBranch = main
+[push]
+    autoSetupRemote = true
+[include]
+    path = ~/.config/git/user-config

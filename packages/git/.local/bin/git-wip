@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+git add --all
+git commit --no-verify --message "wip on $(git branch --show-current)"

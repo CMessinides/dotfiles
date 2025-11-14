@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+set -eo pipefail
+
+git rev-list \
+    --pretty=oneline --all --abbrev-commit \
+| fzf \
+    --nth 2.. --accept-nth 1 --multi --preview='git show --color {1}'
