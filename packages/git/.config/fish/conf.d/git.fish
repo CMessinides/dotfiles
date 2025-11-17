@@ -4,6 +4,7 @@ abbr --add g1       git log --oneline
 abbr --add gs       git show
 abbr --add gd       git diff
 abbr --add ga       git add
+abbr --add gaa      git add --all
 abbr --add gc       git commit
 abbr --set-cursor \
      --add gcm      git commit -m \"%\"
