@@ -6,7 +6,7 @@ abbr --add gd       git diff
 abbr --add ga       git add
 abbr --add gc       git commit
 abbr --set-cursor \
-     --add gcm      git commit -m "%"
+     --add gcm      git commit -m \"%\"
 abbr --add gmend    git commit --amend --no-edit
 abbr --add gw       git wip
 abbr --add gcp      git cherry-pick
