@@ -7,12 +7,12 @@ set -gx FZF_DEFAULT_OPTS "
     --preview-window 'right,border-left,<66(down,50%,border-top)'
     --color 16
     --color border:grey
-    --color prompt:blue
-    --color pointer:blue
-    --color info:italic:blue
-    --color label:italic:blue
-    --color fg+:bold:bright-magenta,bg+:-1
-    --color hl:underline:yellow,hl+:bold:underline:bright-yellow
+    --color prompt:bright-magenta
+    --color pointer:bright-blue
+    --color gutter:grey
+    --color info:italic:magenta
+    --color label:italic:magenta
+    --color fg+:bold:bright-blue,bg+:grey
+    --color hl:underline:green,hl+:bold:underline:bright-green
     --prompt '❱ '
-    --pointer '▒'
 "
