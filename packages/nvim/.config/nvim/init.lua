@@ -118,16 +118,16 @@ require("lazy").setup({
                     map("<leader>ca", vim.lsp.buf.code_action, "[C]ode [A]ction", { "n", "x" })
 
                     -- Find references for the word under your cursor.
-                    map("grr", require("telescope.builtin").lsp_references, "[G]oto [R]eferences")
+                    map("grr", require("fzf-lua").lsp_references, "[G]oto [R]eferences")
 
                     -- Jump to the implementation of the word under your cursor.
                     --  Useful when your language has ways of declaring types without an actual implementation.
-                    map("gri", require("telescope.builtin").lsp_implementations, "[G]oto [I]mplementation")
+                    map("gri", require("fzf-lua").lsp_implementations, "[G]oto [I]mplementation")
 
                     -- Jump to the definition of the word under your cursor.
                     --  This is where a variable was first declared, or where a function is defined, etc.
                     --  To jump back, press <C-t>.
-                    map("gd", require("telescope.builtin").lsp_definitions, "[G]oto [D]efinition")
+                    map("gd", require("fzf-lua").lsp_definitions, "[G]oto [D]efinition")
 
                     -- WARN: This is not Goto Definition, this is Goto Declaration.
                     --  For example, in C this would take you to the header.
@@ -135,20 +135,16 @@ require("lazy").setup({
 
                     -- Fuzzy find all the symbols in your current document.
                     --  Symbols are things like variables, functions, types, etc.
-                    map("<leader>ds", require("telescope.builtin").lsp_document_symbols, "Open [D]ocument [S]ymbols")
+                    map("<leader>ds", require("fzf-lua").lsp_document_symbols, "Open [D]ocument [S]ymbols")
 
                     -- Fuzzy find all the symbols in your current workspace.
                     --  Similar to document symbols, except searches over your entire project.
-                    map(
-                        "<leader>ws",
-                        require("telescope.builtin").lsp_dynamic_workspace_symbols,
-                        "Open [W]orkspace [S]ymbols"
-                    )
+                    map("<leader>ws", require("fzf-lua").lsp_live_workspace_symbols, "Open [W]orkspace [S]ymbols")
 
                     -- Jump to the type of the word under your cursor.
                     --  Useful when you're not sure what type a variable is and you want to see
                     --  the definition of its *type*, not where it was *defined*.
-                    map("<leader>[T]", require("telescope.builtin").lsp_type_definitions, "[T]ype Definition")
+                    map("<leader>T", require("fzf-lua").lsp_typedefs, "[T]ype Definition")
 
                     -- This function resolves a difference between neovim nightly (version 0.11) and stable (version 0.10)
                     ---@param client vim.lsp.Client
@@ -565,24 +561,27 @@ require("lazy").setup({
     -- "gc" to comment visual regions/lines
     { "numToStr/Comment.nvim", opts = {} },
 
-    -- Fuzzy Finder (files, lsp, etc)
     {
-        "nvim-telescope/telescope.nvim",
-        branch = "0.1.x",
-        dependencies = {
-            "nvim-lua/plenary.nvim",
-            -- Fuzzy Finder Algorithm which requires local dependencies to be built.
-            -- Only load if `make` is available. Make sure you have the system
-            -- requirements installed.
-            {
-                "nvim-telescope/telescope-fzf-native.nvim",
-                -- NOTE: If you are having trouble with this installation,
-                --       refer to the README for telescope-fzf-native for more instructions.
-                build = "make",
-                cond = function()
-                    return vim.fn.executable("make") == 1
-                end,
-            },
+        "ibhagwan/fzf-lua",
+        dependencies = { "nvim-tree/nvim-web-devicons" },
+        ---@module "fzf-lua"
+        ---@type fzf-lua.Config|{}
+        ---@diagnostics disable: missing-fields
+        opts = {},
+        ---@diagnostics enable: missing-fields
+        cmd = "FzfLua",
+        keys = {
+            { "<Leader>?", "<cmd>FzfLua oldfiles<cr>", desc = "[?] Search recently opened files" },
+            { "<Leader><Space>", "<cmd>FzfLua buffers<cr>", desc = "[ ] Search open buffers" },
+            { "<Leader>/", "<cmd>Fzflua grep_curbuf", desc = "[/] Search by grep in current buffer" },
+            { "<Leader>sf", "<cmd>FzfLua files<cr>", desc = "[S]earch [F]iles" },
+            { "<Leader>sg", "<cmd>FzfLua grep<cr>", desc = "[S]earch by [G]rep" },
+            { "<Leader>sm", "<cmd>FzfLua marks<cr>", desc = "[S]earch [M]arks" },
+            { "<Leader>su", "<cmd>FzfLua global<cr>", desc = "[S]earch [U]niversal" },
+            { "<Leader>gf", "<cmd>FzfLua git_files<cr>", desc = "Search [G]it [F]iles" },
+            { "<Leader>gb", "<cmd>FzfLua git_branches<cr>", desc = "Search [G]it [B]ranches" },
+            { "<Leader>gl", "<cmd>FzfLua git_commits<cr>", desc = "Search [G]it [L]og" },
+            { "<Leader>sr", "<cmd>FzfLua resume<cr>", desc = "[S]earch [R]esume" },
         },
     },
 
@@ -642,56 +641,6 @@ vim.filetype.add({
     filename = {},
     pattern = {},
 })
-
--- [[ Configure Telescope ]]
--- See `:help telescope` and `:help telescope.setup()`
-require("telescope").setup({
-    defaults = {
-        mappings = {
-            i = {
-                ["<C-u>"] = false,
-                ["<C-d>"] = false,
-            },
-        },
-    },
-    pickers = {
-        find_files = {
-            hidden = true,
-        },
-    },
-})
-
--- Enable telescope fzf native, if installed
-pcall(require("telescope").load_extension, "fzf")
-
--- See `:help telescope.builtin`
-vim.keymap.set("n", "<leader>?", require("telescope.builtin").oldfiles, { desc = "[?] Find recently opened files" })
-vim.keymap.set("n", "<leader><space>", require("telescope.builtin").buffers, { desc = "[ ] Find existing buffers" })
-vim.keymap.set("n", "<leader>/", function()
-    -- You can pass additional configuration to telescope to change theme, layout, etc.
-    require("telescope.builtin").current_buffer_fuzzy_find(require("telescope.themes").get_dropdown({
-        winblend = 10,
-        previewer = false,
-    }))
-end, { desc = "[/] Fuzzily search in current buffer" })
-
-vim.keymap.set("n", "<leader>gf", require("telescope.builtin").git_files, { desc = "Search [G]it [F]iles" })
-vim.keymap.set("n", "<leader>sf", require("telescope.builtin").find_files, { desc = "[S]earch [F]iles" })
-vim.keymap.set("n", "<leader>sd", function()
-    require("telescope.builtin").find_files({
-        find_command = { "fd", "-t", "d" },
-    })
-end, { desc = "[S]earch [D]irectories" })
-vim.keymap.set("n", "<leader>s.", function()
-    require("telescope.builtin").find_files({
-        cwd = require("telescope.utils").buffer_dir(),
-    })
-end, { desc = "[S]earch This Directory" })
-vim.keymap.set("n", "<leader>sh", require("telescope.builtin").help_tags, { desc = "[S]earch [H]elp" })
-vim.keymap.set("n", "<leader>sw", require("telescope.builtin").grep_string, { desc = "[S]earch current [W]ord" })
-vim.keymap.set("n", "<leader>sg", require("telescope.builtin").live_grep, { desc = "[S]earch by [G]rep" })
--- vim.keymap.set("n", "<leader>sd", require("telescope.builtin").diagnostics, { desc = "[S]earch [D]iagnostics" })
-vim.keymap.set("n", "<leader>sr", require("telescope.builtin").resume, { desc = "[S]earch [R]esume" })
 
 -- [[ Configure Treesitter ]]
 -- See `:help nvim-treesitter`
