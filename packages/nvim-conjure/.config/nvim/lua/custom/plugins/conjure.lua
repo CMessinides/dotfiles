@@ -1,45 +1,46 @@
 return {
-    -- Interactive REPL editing
-    {
-        "Olical/conjure",
-        cmd = "ConjureSchool",
-        ft = { "clojure", "fennel", "python" }, -- etc
-        -- [Optional] cmp-conjure for cmp
-        dependencies = {
-            {
-                "PaterJason/cmp-conjure",
-                config = function()
-                    local cmp = require("cmp")
-                    local config = cmp.get_config()
-                    table.insert(config.sources, {
-                        name = "buffer",
-                        option = {
-                            sources = {
-                                { name = "conjure" },
-                            },
-                        },
-                    })
-                    cmp.setup(config)
-                end,
-            },
-        },
-        config = function()
-            require("conjure.main").main()
-            require("conjure.mapping")["on-filetype"]()
-        end,
-        init = function()
-            -- Set configuration options here
-            -- vim.g["conjure#debug"] = true
+	-- Interactive REPL editing
+	{
+		"Olical/conjure",
+		cmd = "ConjureSchool",
+		ft = { "clojure", "fennel", "python" }, -- etc
+		-- [Optional] cmp-conjure for cmp
+		dependencies = {
+			-- TODO: switch to blink.cmp with blink.compat
+			-- {
+			--     "PaterJason/cmp-conjure",
+			--     config = function()
+			--         local cmp = require("cmp")
+			--         local config = cmp.get_config()
+			--         table.insert(config.sources, {
+			--             name = "buffer",
+			--             option = {
+			--                 sources = {
+			--                     { name = "conjure" },
+			--                 },
+			--             },
+			--         })
+			--         cmp.setup(config)
+			--     end,
+			-- },
+		},
+		config = function()
+			require("conjure.main").main()
+			require("conjure.mapping")["on-filetype"]()
+		end,
+		init = function()
+			-- Set configuration options here
+			-- vim.g["conjure#debug"] = true
 
-            -- Disable the documentation mapping
-            vim.g["conjure#mapping#doc_word"] = false
+			-- Disable the documentation mapping
+			vim.g["conjure#mapping#doc_word"] = false
 
-            -- Use the stdio client for fennel
-            vim.g["conjure#filetype#fennel"] = "conjure.client.fennel.stdio"
-        end,
-    },
+			-- Use the stdio client for fennel
+			vim.g["conjure#filetype#fennel"] = "conjure.client.fennel.stdio"
+		end,
+	},
 
-    -- Structural editing, optional
-    "guns/vim-sexp",
-    "tpope/vim-sexp-mappings-for-regular-people",
+	-- Structural editing, optional
+	"guns/vim-sexp",
+	"tpope/vim-sexp-mappings-for-regular-people",
 }
