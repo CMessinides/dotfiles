@@ -1,6 +1,6 @@
 function print-help -d "Print formatted CLI help text to stderr"
     argparse --max-args 1 \
-        'h/help' 'u/usage=' 'a/argument=+' 'o/option=+' -- $argv
+        'h/help' 'u/usage=' 'a/argument=+' 'o/option=+' 'c/command=+' -- $argv
     or return
 
     if set -ql _flag_h
@@ -19,6 +19,10 @@ function print-help -d "Print formatted CLI help text to stderr"
                         "Document an option. Can be provided for multiple options." \
                         --short "o" \
                         --placeholder "OPT") \
+            --option (fmt-opt "command" \
+                        "Document a command. Can be provided for multiple commands." \
+                        --short "c" \
+                        --placeholder "CMD") \
             --option (fmt-opt "help" "Show this help" --short "h")
         return
     end
@@ -49,6 +53,14 @@ function print-help -d "Print formatted CLI help text to stderr"
             printf "\nOptions:\n"
             for opt in $_flag_o
                 echo "  $opt"
+            end | column -ts \t
+        end
+
+        set -l ncmds (count $_flag_c)
+        if test $ncmds -gt 0
+            printf "\nCommands:\n"
+            for cmd in $_flag_c
+                echo "  $cmd"
             end | column -ts \t
         end
     end >&2
