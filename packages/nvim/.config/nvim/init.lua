@@ -593,6 +593,7 @@ require("lazy").setup({
         dependencies = {
             "nvim-treesitter/nvim-treesitter-textobjects",
         },
+        lazy = false,
         build = ":TSUpdate",
     },
 
@@ -648,26 +649,9 @@ vim.filetype.add({
 -- See `:help nvim-treesitter`
 -- Defer Treesitter setup after first render to improve startup time of 'nvim {filename}'
 vim.defer_fn(function()
-    require("nvim-treesitter.configs").setup({
-        -- Add languages to be installed here that you want installed for treesitter
-        ensure_installed = {
-            "c",
-            "cpp",
-            "go",
-            "lua",
-            "markdown",
-            "python",
-            "rust",
-            "tsx",
-            "javascript",
-            "typescript",
-            "vimdoc",
-            "vim",
-        },
-
-        -- Autoinstall languages that are not installed. Defaults to false (but you can change for yourself!)
-        auto_install = false,
-
+    local treesitter = require("nvim-treesitter")
+    treesitter.setup({
+        install_dir = vim.fn.stdpath("data") .. "/site",
         highlight = { enable = true },
         indent = { enable = true },
         incremental_selection = {
@@ -724,6 +708,37 @@ vim.defer_fn(function()
             },
         },
     })
+
+    local parsers = {
+        "c",
+        "cpp",
+        "go",
+        "gotmpl",
+        "lua",
+        "markdown",
+        "python",
+        "tsx",
+        "javascript",
+        "typescript",
+        "html",
+        "css",
+        "json",
+        "vimdoc",
+        "vim",
+    }
+
+    treesitter.install(parsers):wait(300000) -- wait for up to five minutes
+
+    local installed = treesitter.get_installed()
+
+    for _, parser in ipairs(installed) do
+        vim.api.nvim_create_autocmd("FileType", {
+            pattern = { parser },
+            callback = function()
+                vim.treesitter.start()
+            end,
+        })
+    end
 end, 0)
 
 -- Diagnostic keymaps
