@@ -521,20 +521,13 @@ require("lazy").setup({
     },
 
     {
-        "rebelot/kanagawa.nvim",
+        "zenbones-theme/zenbones.nvim",
+        dependencies = "rktjmp/lush.nvim",
         lazy = false,
         priority = 1000,
-        opts = {
-            colors = {
-                theme = {
-                    all = {
-                        ui = {
-                            bg_gutter = "none",
-                        },
-                    },
-                },
-            },
-        },
+        config = function()
+            vim.cmd.colorscheme("seoulbones")
+        end,
     },
 
     {
@@ -575,7 +568,7 @@ require("lazy").setup({
         keys = {
             { "<Leader>?", "<cmd>FzfLua oldfiles<cr>", desc = "[?] Search recently opened files" },
             { "<Leader><Space>", "<cmd>FzfLua buffers<cr>", desc = "[ ] Search open buffers" },
-            { "<Leader>/", "<cmd>Fzflua grep_curbuf", desc = "[/] Search by grep in current buffer" },
+            { "<Leader>/", "<cmd>FzfLua grep_curbuf<cr>", desc = "[/] Search by grep in current buffer" },
             { "<Leader>sf", "<cmd>FzfLua files<cr>", desc = "[S]earch [F]iles" },
             { "<Leader>sg", "<cmd>FzfLua live_grep<cr>", desc = "[S]earch by [G]rep" },
             { "<Leader>sh", "<cmd>FzfLua helptags<cr>", desc = "[S]earch [H]elp" },
@@ -617,9 +610,6 @@ require("lazy").setup({
 
 -- Set options
 require("cmessinides.opts")
-
--- Set the colorscheme
-vim.cmd.colorscheme("kanagawa")
 
 -- Custom keymaps
 require("cmessinides.keymaps")
