@@ -318,6 +318,7 @@ require("lazy").setup({
                         "liquid",
                         "typescriptreact",
                         "svelte",
+                        "gotmpl",
                     },
                 },
 
@@ -640,6 +641,7 @@ vim.filetype.add({
     extension = {
         mdx = "markdown.mdx",
         dj = "djot",
+        tmpl = "gotmpl",
     },
     filename = {},
     pattern = {},
@@ -647,6 +649,21 @@ vim.filetype.add({
 
 -- [[ Configure Treesitter ]]
 -- See `:help nvim-treesitter`
+
+-- Configuring dynamic gotmpl injections.
+-- Name files *.{ft}.tmpl to dynamically set the injection language.
+-- See https://github.com/nvim-treesitter/nvim-treesitter/discussions/1917#discussioncomment-10714144
+vim.treesitter.query.add_directive("inject-go-tmpl!", function(_, _, bufnr, _, metadata)
+    -- bufnr = tonumber(bufnr)
+    -- if bufnr ~= nil then
+    local fname = vim.fs.basename(vim.api.nvim_buf_get_name(bufnr))
+    local _, _, ext, _ = string.find(fname, ".*%.(%a+)(%.%a+)")
+    if ext then
+        metadata["injection.language"] = ext
+    end
+    -- end
+end, {})
+
 -- Defer Treesitter setup after first render to improve startup time of 'nvim {filename}'
 vim.defer_fn(function()
     local treesitter = require("nvim-treesitter")
