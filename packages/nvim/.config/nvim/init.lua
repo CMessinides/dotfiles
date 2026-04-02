@@ -271,7 +271,6 @@ require("lazy").setup({
                         },
                     },
                 },
-                pyright = {},
 
                 eslint = {},
 
