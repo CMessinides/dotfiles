@@ -8,7 +8,7 @@ else
 end
 
 if type -q bat
-    set -gx MANPAGER bat
+    set -gx MANPAGER "bat --plain --language man"
 end
 
 fish_add_path "$HOME/.local/bin"
